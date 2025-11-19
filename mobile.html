@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ふじみ野日報">
+    <title>ふじみ野日報 - モバイル版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .status-badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 18px;
+            background: #f8f9fa;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .preview-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            color: white;
+            display: none;
+        }
+
+        .preview-box.show {
+            display: block;
+        }
+
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .preview-value {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-radius: 15px;
+            padding: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .data-list {
+            margin-top: 20px;
+        }
+
+        .data-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .data-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .data-item-date {
+            font-weight: 700;
+            font-size: 16px;
+            color: #667eea;
+        }
+
+        .data-item-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-synced {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .data-item-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .data-item-label {
+            color: #666;
+        }
+
+        .data-item-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .profit-positive {
+            color: #28a745;
+        }
+
+        .profit-negative {
+            color: #dc3545;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .settings-item {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .help-text {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 390px) {
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .form-group input,
+            .form-group select {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 ふじみ野日報</h1>
+        <div class="subtitle">モバイル版</div>
+        <span id="statusBadge" class="status-badge warning">未設定</span>
+    </div>
+
+    <div class="container">
+        <!-- ナビゲーションタブ -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('input')">✏️ 入力</button>
+            <button class="nav-tab" onclick="switchTab('list')">📋 一覧</button>
+            <button class="nav-tab" onclick="switchTab('settings')">⚙️ 設定</button>
+        </div>
+
+        <!-- データ入力タブ -->
+        <div id="input-tab" class="tab-content active">
+            <div class="card">
+                <form id="dataForm" onsubmit="saveData(event)">
+                    <div class="form-group">
+                        <label>📅 日付</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📦 作業Unit数</label>
+                        <input type="number" id="workCost" placeholder="例: 7000" required min="0" step="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>👥 人数</label>
+                        <input type="number" id="staffCount" placeholder="例: 20" required min="1" step="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>🌙 勤務種別</label>
+                        <select id="shiftType" required>
+                            <option value="normal">通常勤務</option>
+                            <option value="night">夜勤</option>
+                        </select>
+                    </div>
+
+                    <div id="preview" class="preview-box">
+                        <div class="preview-item">
+                            <span>作業費:</span>
+                            <span class="preview-value" id="previewWorkFee">-</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>経費:</span>
+                            <span class="preview-value" id="previewExpense">-</span>
+                        </div>
+                        <div class="preview-item">
+                            <span>収支:</span>
+                            <span class="preview-value" id="previewProfit">-</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        💾 保存
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- データ一覧タブ -->
+        <div id="list-tab" class="tab-content">
+            <div class="card">
+                <div class="form-group">
+                    <label>📆 月別フィルタ</label>
+                    <select id="monthFilter" onchange="displayData()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+
+                <div id="dataList" class="data-list"></div>
+            </div>
+        </div>
+
+        <!-- 設定タブ -->
+        <div id="settings-tab" class="tab-content">
+            <div class="card">
+                <h3 style="margin-bottom: 20px; color: #667eea;">🔗 Google Sheets連携</h3>
+                
+                <div class="settings-item">
+                    <div class="form-group">
+                        <label>Apps Script URL</label>
+                        <input type="text" id="scriptUrl" placeholder="https://script.google.com/...">
+                        <div class="help-text">Apps ScriptのウェブアプリURLを入力</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveConfig()">💾 保存</button>
+                    <button class="btn btn-secondary" onclick="testConnection()">🔍 接続テスト</button>
+                </div>
+
+                <h3 style="margin: 30px 0 20px; color: #667eea;">💰 計算設定</h3>
+                
+                <div class="settings-item">
+                    <div class="form-group">
+                        <label>作業単価 (円)</label>
+                        <input type="number" id="unitPrice" value="51" step="1" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>月間管理費 (円)</label>
+                        <input type="number" id="managementFee" value="1530000" step="1000" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>通常時給 (円)</label>
+                        <input type="number" id="normalRate" value="1550" step="10" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>夜勤時給 (円)</label>
+                        <input type="number" id="nightRate" value="1938" step="10" min="0">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveSettings()">💾 設定を保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let dailyData = [];
+        let settings = {
+            unitPrice: 51,
+            managementFee: 1530000,
+            normalRate: 1550,
+            nightRate: 1938
+        };
+        let config = null;
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            loadConfig();
+            loadData();
+            setTodayDate();
+            updateMonthFilter();
+            displayData();
+            setupPreview();
+            updateStatus();
+        });
+
+        // タブ切り替え
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'list') {
+                displayData();
+            }
+        }
+
+        // 今日の日付を設定
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+        }
+
+        // プレビュー設定
+        function setupPreview() {
+            ['workCost', 'staffCount', 'shiftType'].forEach(id => {
+                const element = document.getElementById(id);
+                element.addEventListener('input', updatePreview);
+                element.addEventListener('change', updatePreview);
+            });
+        }
+
+        // プレビュー更新
+        function updatePreview() {
+            const workCost = parseInt(document.getElementById('workCost').value) || 0;
+            const staffCount = parseInt(document.getElementById('staffCount').value) || 0;
+            const shiftType = document.getElementById('shiftType').value;
+            const preview = document.getElementById('preview');
+
+            if (workCost > 0 || staffCount > 0) {
+                const calc = calculateValues(null, workCost, staffCount, shiftType);
+                
+                document.getElementById('previewWorkFee').textContent = '¥' + calc.workFee.toLocaleString();
+                document.getElementById('previewExpense').textContent = '¥' + calc.expense.toLocaleString();
+                document.getElementById('previewProfit').textContent = '¥' + calc.profit.toLocaleString();
+                
+                preview.classList.add('show');
+            } else {
+                preview.classList.remove('show');
+            }
+        }
+
+        // 計算処理
+        function calculateValues(date, workCost, staffCount, shiftType) {
+            const workFee = workCost * settings.unitPrice;
+            
+            let daysInMonth = 30;
+            if (date) {
+                const d = new Date(date);
+                daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            }
+            
+            const management = settings.managementFee / daysInMonth;
+            
+            let expense;
+            if (shiftType === 'night') {
+                expense = staffCount * (settings.nightRate * 6 + settings.normalRate * 2);
+            } else {
+                expense = staffCount * settings.normalRate * 8;
+            }
+            
+            const profit = (workFee + management) - expense;
+
+            return {
+                workFee: Math.round(workFee),
+                management: Math.round(management),
+                expense: Math.round(expense),
+                profit: Math.round(profit)
+            };
+        }
+
+        // データ保存
+        async function saveData(event) {
+            event.preventDefault();
+
+            const date = document.getElementById('date').value;
+            const workCost = parseInt(document.getElementById('workCost').value);
+            const staffCount = parseInt(document.getElementById('staffCount').value);
+            const shiftType = document.getElementById('shiftType').value;
+
+            const calc = calculateValues(date, workCost, staffCount, shiftType);
+
+            const data = {
+                date: date,
+                workCost: workCost,
+                staffCount: staffCount,
+                shiftType: shiftType,
+                workFee: calc.workFee,
+                management: calc.management,
+                expense: calc.expense,
+                profit: calc.profit,
+                synced: false,
+                timestamp: new Date().toISOString()
+            };
+
+            // ローカルに保存
+            dailyData.push(data);
+            dailyData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            saveDataToStorage();
+
+            // Google Sheetsに送信
+            if (config && config.scriptUrl) {
+                try {
+                    document.getElementById('submitBtn').disabled = true;
+                    document.getElementById('submitBtn').textContent = '送信中...';
+                    
+                    await sendToGoogleSheets(data);
+                    
+                    data.synced = true;
+                    saveDataToStorage();
+                    
+                    alert('✅ データを保存してGoogle Sheetsに送信しました！');
+                } catch (error) {
+                    console.error('送信エラー:', error);
+                    alert('⚠️ データは保存されましたが、Google Sheetsへの送信に失敗しました。');
+                } finally {
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('submitBtn').textContent = '💾 保存';
+                }
+            } else {
+                alert('💾 データを保存しました（オフライン）');
+            }
+
+            // フォームをリセット
+            document.getElementById('dataForm').reset();
+            setTodayDate();
+            document.getElementById('preview').classList.remove('show');
+            
+            displayData();
+            updateMonthFilter();
+        }
+
+        // Google Sheetsに送信（iOS対応版）
+        async function sendToGoogleSheets(data) {
+            return new Promise((resolve, reject) => {
+                // URLSearchParamsでクエリ文字列を作成
+                const params = new URLSearchParams();
+                params.append('action', 'addData');
+                params.append('data', JSON.stringify(data));
+                
+                const url = config.scriptUrl + '?' + params.toString();
+                
+                // iframeで送信
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                
+                document.body.appendChild(iframe);
+                
+                // 3秒後に完了とみなす
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    resolve();
+                }, 3000);
+            });
+        }
+
+        // データ表示
+        function displayData() {
+            const monthFilter = document.getElementById('monthFilter').value;
+            const container = document.getElementById('dataList');
+            
+            let filtered = dailyData;
+            if (monthFilter) {
+                filtered = dailyData.filter(d => d.date.startsWith(monthFilter));
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>データがありません</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.reverse().map(data => `
+                <div class="data-item">
+                    <div class="data-item-header">
+                        <span class="data-item-date">${data.date}</span>
+                        <span class="data-item-badge ${data.synced ? 'badge-synced' : 'badge-pending'}">
+                            ${data.synced ? '✓ 同期済み' : '⏳ 待機中'}
+                        </span>
+                    </div>
+                    <div class="data-item-row">
+                        <span class="data-item-label">Unit数:</span>
+                        <span class="data-item-value">${data.workCost.toLocaleString()}</span>
+                    </div>
+                    <div class="data-item-row">
+                        <span class="data-item-label">人数:</span>
+                        <span class="data-item-value">${data.staffCount}人 (${data.shiftType === 'night' ? '夜勤' : '通常'})</span>
+                    </div>
+                    <div class="data-item-row">
+                        <span class="data-item-label">作業費:</span>
+                        <span class="data-item-value">¥${data.workFee.toLocaleString()}</span>
+                    </div>
+                    <div class="data-item-row">
+                        <span class="data-item-label">経費:</span>
+                        <span class="data-item-value">¥${data.expense.toLocaleString()}</span>
+                    </div>
+                    <div class="data-item-row">
+                        <span class="data-item-label">収支:</span>
+                        <span class="data-item-value ${data.profit >= 0 ? 'profit-positive' : 'profit-negative'}">
+                            ¥${data.profit.toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 月別フィルタ更新
+        function updateMonthFilter() {
+            const select = document.getElementById('monthFilter');
+            const months = [...new Set(dailyData.map(d => d.date.substring(0, 7)))].sort().reverse();
+            
+            select.innerHTML = '<option value="">すべて</option>';
+            months.forEach(month => {
+                const option = document.createElement('option');
+                option.value = month;
+                option.textContent = month;
+                select.appendChild(option);
+            });
+        }
+
+        // ローカルストレージ操作
+        function saveDataToStorage() {
+            localStorage.setItem('fushimino_mobile_data', JSON.stringify(dailyData));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('fushimino_mobile_data');
+            if (saved) {
+                dailyData = JSON.parse(saved);
+            }
+        }
+
+        function saveSettings() {
+            settings.unitPrice = parseInt(document.getElementById('unitPrice').value);
+            settings.managementFee = parseInt(document.getElementById('managementFee').value);
+            settings.normalRate = parseInt(document.getElementById('normalRate').value);
+            settings.nightRate = parseInt(document.getElementById('nightRate').value);
+            
+            localStorage.setItem('fushimino_mobile_settings', JSON.stringify(settings));
+            alert('✅ 設定を保存しました');
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('fushimino_mobile_settings');
+            if (saved) {
+                settings = JSON.parse(saved);
+                document.getElementById('unitPrice').value = settings.unitPrice;
+                document.getElementById('managementFee').value = settings.managementFee;
+                document.getElementById('normalRate').value = settings.normalRate;
+                document.getElementById('nightRate').value = settings.nightRate;
+            }
+        }
+
+        function saveConfig() {
+            const scriptUrl = document.getElementById('scriptUrl').value.trim();
+            
+            if (!scriptUrl) {
+                alert('❌ URLを入力してください');
+                return;
+            }
+
+            if (!scriptUrl.includes('script.google.com') || !scriptUrl.includes('/exec')) {
+                alert('❌ 正しいApps Script URLを入力してください');
+                return;
+            }
+
+            config = { scriptUrl: scriptUrl };
+            localStorage.setItem('fushimino_mobile_config', JSON.stringify(config));
+            
+            updateStatus();
+            alert('✅ 設定を保存しました');
+        }
+
+        function loadConfig() {
+            const saved = localStorage.getItem('fushimino_mobile_config');
+            if (saved) {
+                config = JSON.parse(saved);
+                document.getElementById('scriptUrl').value = config.scriptUrl;
+            }
+        }
+
+        function testConnection() {
+            if (!config || !config.scriptUrl) {
+                alert('❌ 先にURLを設定してください');
+                return;
+            }
+
+            window.open(config.scriptUrl, '_blank');
+            
+            setTimeout(() => {
+                const result = confirm('新しいタブでJSONが表示されましたか？');
+                if (result) {
+                    updateStatus();
+                    alert('✅ 接続成功！');
+                } else {
+                    alert('❌ 接続に失敗しました。URLを確認してください。');
+                }
+            }, 2000);
+        }
+
+        function updateStatus() {
+            const badge = document.getElementById('statusBadge');
+            if (config && config.scriptUrl) {
+                badge.className = 'status-badge success';
+                badge.textContent = '✓ 連携中';
+            } else {
+                badge.className = 'status-badge warning';
+                badge.textContent = '未設定';
+            }
+        }
+    </script>
+</body>
+</html>
