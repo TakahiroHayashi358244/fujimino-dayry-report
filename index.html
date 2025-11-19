@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ふし_み野日報 - Google Sheets連携版</title>
+    <title>ふじみ野日報 - Google Sheets連携版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <style>
@@ -980,12 +980,16 @@
                     spreadsheetId: sheetsConfig.spreadsheetId,
                     range: `${sheetsConfig.sheetName}!A:I`,
                     valueInputOption: 'RAW',
-                    resource: { values }
+                    insertDataOption: 'INSERT_ROWS'
+                }, {
+                    values: values
                 });
 
+                console.log('Google Sheets保存成功:', response);
                 return response;
             } catch (error) {
                 console.error('Google Sheets保存エラー:', error);
+                console.error('エラー詳細:', error.result || error);
                 throw error;
             }
         }
