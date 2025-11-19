@@ -734,50 +734,44 @@
             }
         }
 
-        // Google Sheetsにデータ保存（Apps Script経由 - iframe使用）
+        // Google Sheetsにデータ保存（Apps Script経由 - GETリクエスト + iframe）
         async function saveToGoogleSheets(data) {
             if (!sheetsConfig || !sheetsConfig.scriptUrl) {
                 throw new Error('Google Apps Script未設定');
             }
 
-            console.log('=== Google Sheets保存開始 (iframe方式) ===');
+            console.log('=== Google Sheets保存開始 (GET+iframe方式) ===');
             console.log('Script URL:', sheetsConfig.scriptUrl);
             console.log('データ:', data);
             
             return new Promise((resolve, reject) => {
                 try {
+                    // GETリクエストのURLを作成（クエリパラメータとして送信）
+                    const params = new URLSearchParams();
+                    params.append('action', 'addData');
+                    params.append('data', JSON.stringify(data));
+                    
+                    const url = `${sheetsConfig.scriptUrl}?${params.toString()}`;
+                    
+                    console.log('送信URL:', url);
+                    
                     // 隠しiframeを作成
                     const iframe = document.createElement('iframe');
                     iframe.style.display = 'none';
                     iframe.name = 'hiddenFrame_' + Date.now();
                     document.body.appendChild(iframe);
+                    
+                    // iframeでURLを開く
+                    iframe.src = url;
+                    
+                    console.log('✅ リクエスト送信完了');
 
-                    // フォームを作成
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = sheetsConfig.scriptUrl;
-                    form.target = iframe.name;
-
-                    // データをJSON文字列として送信
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'data';
-                    input.value = JSON.stringify(data);
-                    form.appendChild(input);
-
-                    // フォームをDOMに追加してsubmit
-                    document.body.appendChild(form);
-                    form.submit();
-
-                    console.log('✅ フォーム送信完了');
-
-                    // 送信完了を待機（2秒後にクリーンアップ）
+                    // 送信完了を待機（3秒後にクリーンアップ）
                     setTimeout(() => {
-                        document.body.removeChild(form);
                         document.body.removeChild(iframe);
                         console.log('✅ Google Sheets保存完了（スプレッドシートを確認してください）');
                         resolve({ success: true });
-                    }, 2000);
+                    }, 3000);
 
                 } catch (error) {
                     console.error('❌ Google Sheets保存エラー:', error);
