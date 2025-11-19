@@ -386,10 +386,10 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('input')">📝 データ入力</button>
-            <button class="tab-btn" onclick="switchTab('list')">📋 一覧表示</button>
-            <button class="tab-btn" onclick="switchTab('sheets')">🔗 Google Sheets設定</button>
-            <button class="tab-btn" onclick="switchTab('settings')">⚙️ 設定</button>
+            <button class="tab-btn active" onclick="switchTab('input', event)">📝 データ入力</button>
+            <button class="tab-btn" onclick="switchTab('list', event)">📋 一覧表示</button>
+            <button class="tab-btn" onclick="switchTab('sheets', event)">🔗 Google Sheets設定</button>
+            <button class="tab-btn" onclick="switchTab('settings', event)">⚙️ 設定</button>
         </div>
 
         <!-- データ入力タブ -->
@@ -846,15 +846,22 @@
 
         // 計算プレビューの更新
         function updateCalculationPreview() {
-            const workCost = parseFloat(document.getElementById('workCost').value) || 0;
-            const staffCount = parseInt(document.getElementById('staffCount').value) || 0;
-            const shiftType = document.getElementById('shiftType').value;
+            const workCostInput = document.getElementById('workCost');
+            const staffCountInput = document.getElementById('staffCount');
+            const shiftTypeInput = document.getElementById('shiftType');
+            const previewDiv = document.getElementById('calculation-preview');
+            const contentDiv = document.getElementById('preview-content');
+            
+            if (!workCostInput || !staffCountInput || !shiftTypeInput || !previewDiv || !contentDiv) {
+                return;
+            }
+            
+            const workCost = parseFloat(workCostInput.value) || 0;
+            const staffCount = parseInt(staffCountInput.value) || 0;
+            const shiftType = shiftTypeInput.value;
 
             if (workCost > 0 || staffCount > 0) {
                 const calc = calculateValues(null, workCost, staffCount, shiftType);
-                
-                const previewDiv = document.getElementById('calculation-preview');
-                const contentDiv = document.getElementById('preview-content');
                 
                 contentDiv.innerHTML = `
                     作業費合計: <strong>${calc.workFee.toLocaleString()}円</strong><br>
@@ -864,7 +871,7 @@
                 
                 previewDiv.style.display = 'block';
             } else {
-                document.getElementById('calculation-preview').style.display = 'none';
+                previewDiv.style.display = 'none';
             }
         }
 
@@ -901,10 +908,20 @@
         async function saveData(event) {
             event.preventDefault();
 
-            const date = document.getElementById('date').value;
-            const workCost = parseFloat(document.getElementById('workCost').value);
-            const staffCount = parseInt(document.getElementById('staffCount').value);
-            const shiftType = document.getElementById('shiftType').value;
+            const dateInput = document.getElementById('date');
+            const workCostInput = document.getElementById('workCost');
+            const staffCountInput = document.getElementById('staffCount');
+            const shiftTypeInput = document.getElementById('shiftType');
+            
+            if (!dateInput || !workCostInput || !staffCountInput || !shiftTypeInput) {
+                alert('入力フォームが見つかりません');
+                return;
+            }
+
+            const date = dateInput.value;
+            const workCost = parseFloat(workCostInput.value);
+            const staffCount = parseInt(staffCountInput.value);
+            const shiftType = shiftTypeInput.value;
 
             const calculated = calculateValues(date, workCost, staffCount, shiftType);
 
@@ -949,10 +966,14 @@
                 alert('💾 データを保存しました(オフライン: 後で自動同期されます)');
             }
             
-            document.getElementById('dataForm').reset();
+            const dataForm = document.getElementById('dataForm');
+            const preview = document.getElementById('calculation-preview');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (dataForm) dataForm.reset();
             setTodayDate();
-            document.getElementById('calculation-preview').style.display = 'none';
-            document.getElementById('submitBtn').textContent = '💾 保存';
+            if (preview) preview.style.display = 'none';
+            if (submitBtn) submitBtn.textContent = '💾 保存';
             
             displayData();
             updateMonthFilters();
@@ -1123,25 +1144,45 @@
         // データ編集
         function editData(index) {
             const data = dailyData[index];
-            document.getElementById('date').value = data.date;
-            document.getElementById('workCost').value = data.workCost;
-            document.getElementById('staffCount').value = data.staffCount;
-            document.getElementById('shiftType').value = data.shiftType;
+            const dateInput = document.getElementById('date');
+            const workCostInput = document.getElementById('workCost');
+            const staffCountInput = document.getElementById('staffCount');
+            const shiftTypeInput = document.getElementById('shiftType');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (dateInput) dateInput.value = data.date;
+            if (workCostInput) workCostInput.value = data.workCost;
+            if (staffCountInput) staffCountInput.value = data.staffCount;
+            if (shiftTypeInput) shiftTypeInput.value = data.shiftType;
             
             editingIndex = index;
-            document.getElementById('submitBtn').textContent = '✏️ 更新';
+            if (submitBtn) submitBtn.textContent = '✏️ 更新';
             
+            // 入力タブに切り替え
             switchTab('input');
+            
+            // 入力タブのボタンを手動でアクティブに
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.includes('データ入力')) {
+                    btn.classList.add('active');
+                }
+            });
+            
             window.scrollTo(0, 0);
         }
 
         // 編集キャンセル
         function cancelEdit() {
             editingIndex = -1;
-            document.getElementById('dataForm').reset();
+            const dataForm = document.getElementById('dataForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const preview = document.getElementById('calculation-preview');
+            
+            if (dataForm) dataForm.reset();
             setTodayDate();
-            document.getElementById('submitBtn').textContent = '💾 保存';
-            document.getElementById('calculation-preview').style.display = 'none';
+            if (submitBtn) submitBtn.textContent = '💾 保存';
+            if (preview) preview.style.display = 'none';
         }
 
         // データ削除
@@ -1193,16 +1234,27 @@
         }
 
         // タブ切り替え
-        function switchTab(tabName) {
+        function switchTab(tabName, event) {
+            // すべてのタブコンテンツを非表示
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
+            
+            // すべてのタブボタンを非アクティブ
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
 
-            document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            // 指定されたタブを表示
+            const targetTab = document.getElementById(tabName + '-tab');
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
+            
+            // クリックされたボタンをアクティブに
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
 
         // Excelエクスポート
