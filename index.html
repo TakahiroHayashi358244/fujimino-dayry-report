@@ -702,44 +702,35 @@
                 return;
             }
 
-            try {
-                updateSyncStatus('syncing', '接続テスト中...');
-                console.log('=== 接続テスト開始 ===');
-                console.log('Script URL:', sheetsConfig.scriptUrl);
+            // 新しいタブでURLを開いて手動確認
+            const confirmOpen = confirm(
+                '接続テストを行います。\n\n' +
+                'Apps Script URLを新しいタブで開きます。\n' +
+                'JSONが表示されれば接続成功です。\n\n' +
+                '開きますか？'
+            );
+            
+            if (confirmOpen) {
+                window.open(sheetsConfig.scriptUrl, '_blank');
                 
-                const response = await fetch(sheetsConfig.scriptUrl, {
-                    method: 'GET',
-                    redirect: 'follow'
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const result = await response.json();
-                console.log('接続成功!', result);
-                
-                if (result.success) {
-                    updateSyncStatus('synced', '接続成功!');
-                    alert(`✅ 接続に成功しました!\n\n${result.message}\n\nデータ:\n- スプレッドシートID: ${result.data?.spreadsheetId}\n- シート名: ${result.data?.sheetName}\n- 最終行: ${result.data?.lastRow}`);
-                    updateConfigStatus(true);
-                } else {
-                    throw new Error(result.message || '不明なエラー');
-                }
-            } catch (error) {
-                console.error('=== 接続テストエラー ===');
-                console.error('エラー詳細:', error);
-                
-                updateSyncStatus('offline', '接続失敗');
-                
-                let errorMessage = error.message || '不明なエラー';
-                
-                if (error.message && error.message.includes('Failed to fetch')) {
-                    errorMessage = 'ネットワークエラー: Apps Scriptに接続できません\n\n対処法:\n1. URLが正しいか確認\n2. Apps Scriptが「全員」にアクセス許可しているか確認\n3. インターネット接続を確認';
-                }
-                
-                alert('❌ 接続に失敗しました:\n\n' + errorMessage);
-                updateConfigStatus(false, errorMessage);
+                // 3秒後に確認ダイアログを表示
+                setTimeout(() => {
+                    const success = confirm(
+                        '新しいタブでJSONが表示されましたか？\n\n' +
+                        '✅ 「OK」 = 接続成功（JSONが表示された）\n' +
+                        '❌ 「キャンセル」 = 接続失敗'
+                    );
+                    
+                    if (success) {
+                        updateSyncStatus('synced', '接続成功!');
+                        updateConfigStatus(true);
+                        alert('✅ 接続テストに成功しました！\n\nデータの保存と同期が可能です。');
+                    } else {
+                        updateSyncStatus('offline', '接続失敗');
+                        updateConfigStatus(false);
+                        alert('❌ 接続に失敗しました。\n\n対処法:\n1. Apps Scriptが正しくデプロイされているか確認\n2. 「アクセスできるユーザー」が「全員」になっているか確認\n3. URLが正しいか確認');
+                    }
+                }, 3000);
             }
         }
 
@@ -754,28 +745,24 @@
             console.log('データ:', data);
             
             try {
-                const response = await fetch(sheetsConfig.scriptUrl, {
+                // no-corsモードでリクエストを送信
+                // 注意: レスポンスは読めないが、リクエストは送信される
+                await fetch(sheetsConfig.scriptUrl, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'text/plain'
                     },
-                    body: JSON.stringify(data),
-                    redirect: 'follow'
+                    body: JSON.stringify(data)
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                console.log('Apps Script レスポンス:', result);
-
-                if (result.success) {
-                    console.log('✅ Google Sheets保存成功');
-                    return result;
-                } else {
-                    throw new Error(result.message || '保存に失敗しました');
-                }
+                console.log('✅ Google Sheets保存リクエスト送信完了');
+                console.log('💡 no-corsモードのため、レスポンスは確認できません');
+                console.log('💡 スプレッドシートを直接確認してデータが追加されているか確認してください');
+                
+                // no-corsモードではレスポンスが読めないため、成功とみなす
+                return { success: true };
+                
             } catch (error) {
                 console.error('❌ Google Sheets保存エラー:', error);
                 console.error('エラーメッセージ:', error.message);
@@ -953,7 +940,7 @@
                     data.synced = true;
                     saveDataToStorage();
                     updateSyncStatus('synced', '同期完了');
-                    alert('✅ データを保存しました(Google Sheetsに同期済み)');
+                    alert('✅ データを保存しました\n\nGoogle Sheetsへ送信完了しました。\nスプレッドシートを開いて、データが追加されているか確認してください。');
                 } catch (error) {
                     console.error('同期エラー:', error);
                     data.syncError = error.message;
@@ -1026,12 +1013,12 @@
             if (failCount === 0) {
                 updateSyncStatus('synced', '同期完了');
                 if (pendingData.length > 0 && showAlert) {
-                    alert(`✅ ${successCount}件のデータを同期しました`);
+                    alert(`✅ ${successCount}件のデータを同期しました\n\nスプレッドシートを開いて確認してください。`);
                 }
             } else {
                 updateSyncStatus('pending', `${failCount}件同期失敗`);
                 if (showAlert) {
-                    alert(`⚠️ ${successCount}件成功、${failCount}件失敗しました`);
+                    alert(`⚠️ ${successCount}件成功、${failCount}件失敗しました\n\nスプレッドシートで成功したデータを確認してください。`);
                 }
             }
         }
