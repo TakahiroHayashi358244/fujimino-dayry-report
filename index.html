@@ -1125,21 +1125,6 @@
                 updateSyncStatus('synced', '同期完了');
             }
         }
-                            <button class="btn-small btn-edit" onclick="editData(${actualIndex})">編集</button>
-                            <button class="btn-small btn-delete" onclick="deleteData(${actualIndex})">削除</button>
-                        </div>
-                    </td>
-                `;
-            });
-
-            // 未同期データカウント
-            const pendingCount = dailyData.filter(d => !d.synced).length;
-            if (pendingCount > 0) {
-                updateSyncStatus('pending', `${pendingCount}件同期待ち`);
-            } else if (isOnline && sheetsConfig) {
-                updateSyncStatus('synced', '同期完了');
-            }
-        }
 
         // データ編集
         function editData(index) {
