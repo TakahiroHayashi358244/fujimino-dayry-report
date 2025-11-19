@@ -509,6 +509,9 @@
                     <button type="button" class="btn btn-secondary" onclick="showDebugInfo()" style="margin-top: 10px;">
                         🐛 デバッグ情報を表示
                     </button>
+                    <button type="button" class="btn btn-secondary" onclick="lockSheetsConfig()" style="margin-top: 10px; background: #dc3545;">
+                        🔒 設定をロック
+                    </button>
                 </form>
 
                 <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
@@ -693,6 +696,21 @@
             const debugText = info.join('\n');
             console.log(debugText);
             alert(debugText);
+        }
+
+        // Google Sheets設定をロック
+        function lockSheetsConfig() {
+            const confirmLock = confirm('Google Sheets設定をロックします。\n\n次回アクセス時にパスワードが必要になります。\n\nよろしいですか？');
+            
+            if (confirmLock) {
+                // 認証情報をクリア
+                sessionStorage.removeItem('sheets_config_auth');
+                
+                alert('🔒 Google Sheets設定をロックしました。\n\n次回アクセス時にパスワードが必要です。');
+                
+                // データ入力タブに移動
+                switchTab('input', null);
+            }
         }
 
         // 接続テスト
@@ -1218,6 +1236,25 @@
 
         // タブ切り替え
         function switchTab(tabName, event) {
+            // Google Sheets設定タブへのアクセス時にパスワードチェック
+            if (tabName === 'sheets') {
+                // セッション中に既に認証済みかチェック
+                const isAuthenticated = sessionStorage.getItem('sheets_config_auth') === 'true';
+                
+                if (!isAuthenticated) {
+                    // パスワードを要求
+                    const password = prompt('Google Sheets設定にアクセスするにはパスワードを入力してください:');
+                    
+                    if (password !== '123') {
+                        alert('パスワードが正しくありません');
+                        return; // タブ切り替えを中止
+                    }
+                    
+                    // 認証成功 - セッションに保存
+                    sessionStorage.setItem('sheets_config_auth', 'true');
+                }
+            }
+            
             // すべてのタブコンテンツを非表示
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
