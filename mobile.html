@@ -404,6 +404,7 @@
                     </div>
                     <button class="btn btn-primary" onclick="saveConfig()">💾 保存</button>
                     <button class="btn btn-secondary" onclick="testConnection()">🔍 接続テスト</button>
+                    <button class="btn btn-secondary" onclick="debugRequest()" style="background: #ffc107; color: #000;">🐛 デバッグ</button>
                 </div>
 
                 <h3 style="margin: 30px 0 20px; color: #667eea;">💰 計算設定</h3>
@@ -572,17 +573,22 @@
             if (config && config.scriptUrl) {
                 try {
                     document.getElementById('submitBtn').disabled = true;
-                    document.getElementById('submitBtn').textContent = '送信中...';
+                    document.getElementById('submitBtn').textContent = '送信中... (7秒)';
+                    
+                    console.log('=== データ送信開始 ===');
+                    console.log('送信データ:', data);
                     
                     await sendToGoogleSheets(data);
                     
                     data.synced = true;
                     saveDataToStorage();
                     
-                    alert('✅ データを保存してGoogle Sheetsに送信しました！');
+                    console.log('=== 送信処理完了 ===');
+                    
+                    alert('✅ データを送信しました！\n\nスプレッドシートを開いて\nデータが追加されているか確認してください。\n\n※反映に数秒かかる場合があります');
                 } catch (error) {
                     console.error('送信エラー:', error);
-                    alert('⚠️ データは保存されましたが、Google Sheetsへの送信に失敗しました。');
+                    alert('⚠️ 送信に失敗しました。\n\nデータは保存されています。\n設定を確認してください。');
                 } finally {
                     document.getElementById('submitBtn').disabled = false;
                     document.getElementById('submitBtn').textContent = '💾 保存';
@@ -600,28 +606,79 @@
             updateMonthFilter();
         }
 
-        // Google Sheetsに送信（iOS対応版）
+        // Google Sheetsに送信（iOS対応版 - 改善版）
         async function sendToGoogleSheets(data) {
             return new Promise((resolve, reject) => {
-                // URLSearchParamsでクエリ文字列を作成
-                const params = new URLSearchParams();
-                params.append('action', 'addData');
-                params.append('data', JSON.stringify(data));
-                
-                const url = config.scriptUrl + '?' + params.toString();
-                
-                // iframeで送信
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = url;
-                
-                document.body.appendChild(iframe);
-                
-                // 3秒後に完了とみなす
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                    resolve();
-                }, 3000);
+                try {
+                    // URLSearchParamsでクエリ文字列を作成
+                    const params = new URLSearchParams();
+                    params.append('action', 'addData');
+                    params.append('data', JSON.stringify(data));
+                    
+                    const url = config.scriptUrl + '?' + params.toString();
+                    
+                    // デバッグ: URLの長さを確認
+                    console.log('=== 送信デバッグ（改善版） ===');
+                    console.log('URL長:', url.length);
+                    console.log('送信時刻:', new Date().toLocaleTimeString());
+                    
+                    // URLが長すぎる場合は警告
+                    if (url.length > 2000) {
+                        console.warn('⚠️ URLが長すぎます:', url.length, '文字');
+                    }
+                    
+                    let requestSent = false;
+                    
+                    // 方法1: iframe送信（iOSで最も確実）
+                    console.log('📤 iframe送信を開始');
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.style.width = '0';
+                    iframe.style.height = '0';
+                    iframe.src = url;
+                    
+                    iframe.onload = function() {
+                        console.log('✅ iframe onload');
+                        requestSent = true;
+                    };
+                    
+                    iframe.onerror = function() {
+                        console.log('✅ iframe onerror（正常）');
+                        requestSent = true;
+                    };
+                    
+                    document.body.appendChild(iframe);
+                    
+                    // 方法2: fetch送信（バックアップ）
+                    console.log('📤 fetch送信を開始');
+                    fetch(url, {
+                        method: 'GET',
+                        mode: 'no-cors',
+                        cache: 'no-cache'
+                    }).then(() => {
+                        console.log('✅ fetch完了');
+                        requestSent = true;
+                    }).catch(err => {
+                        console.log('✅ fetch完了（エラーは正常）:', err.message);
+                        requestSent = true;
+                    });
+                    
+                    // 7秒後にクリーンアップして完了
+                    setTimeout(() => {
+                        console.log('⏱️ 送信完了（7秒経過）');
+                        console.log('リクエスト送信:', requestSent ? '成功' : '不明');
+                        
+                        if (iframe && iframe.parentNode) {
+                            document.body.removeChild(iframe);
+                        }
+                        
+                        resolve();
+                    }, 7000);
+                    
+                } catch (error) {
+                    console.error('❌ 送信エラー:', error);
+                    reject(error);
+                }
             });
         }
 
@@ -771,6 +828,66 @@
                     alert('❌ 接続に失敗しました。URLを確認してください。');
                 }
             }, 2000);
+        }
+
+        function debugRequest() {
+            if (!config || !config.scriptUrl) {
+                alert('❌ 先にURLを設定してください');
+                return;
+            }
+
+            // テストデータを作成
+            const testData = {
+                date: '2025-11-19',
+                workCost: 100,
+                staffCount: 1,
+                shiftType: 'normal',
+                workFee: 5100,
+                management: 51000,
+                expense: 12400,
+                profit: 43700,
+                timestamp: new Date().toISOString()
+            };
+
+            // URLを生成
+            const params = new URLSearchParams();
+            params.append('action', 'addData');
+            params.append('data', JSON.stringify(testData));
+            
+            const url = config.scriptUrl + '?' + params.toString();
+
+            // デバッグ情報を表示
+            const info = [];
+            info.push('=== デバッグ情報 ===');
+            info.push('');
+            info.push('URL長: ' + url.length + ' 文字');
+            info.push('');
+            info.push('【Apps Script URL】');
+            info.push(config.scriptUrl);
+            info.push('');
+            info.push('【完全なURL（最初の200文字）】');
+            info.push(url.substring(0, 200));
+            info.push('');
+            
+            if (url.length > 2000) {
+                info.push('⚠️ 警告: URLが2000文字を超えています');
+                info.push('一部のブラウザで問題が発生する可能性があります');
+                info.push('');
+            }
+
+            info.push('このURLを新しいタブで開きますか？');
+            info.push('（スプレッドシートにテストデータが追加されます）');
+
+            const message = info.join('\n');
+            console.log(message);
+            
+            if (confirm(message)) {
+                window.open(url, '_blank');
+                
+                setTimeout(() => {
+                    alert('新しいタブでJSONレスポンスが表示され、\nスプレッドシートにデータが追加されていれば成功です！');
+                }, 1000);
+            }
         }
 
         function updateStatus() {
