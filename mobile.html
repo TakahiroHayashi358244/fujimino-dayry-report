@@ -225,12 +225,16 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .data-item-date {
             font-weight: 700;
             font-size: 16px;
             color: #667eea;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .data-item-badge {
@@ -238,6 +242,8 @@
             border-radius: 12px;
             font-size: 12px;
             font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .badge-synced {
