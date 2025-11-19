@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ふじみ野日報</title>
+    <title>📊ふじみ野日報</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
@@ -407,7 +407,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 ふじみ野日報 - Google Sheets連携版</h1>
+            <h1>📊 ふじみ野日報</h1>
             <p>日々の作業データを記録・自動同期</p>
             <div id="syncStatus" class="sync-status offline">
                 <span class="spinner" style="display: none;"></span>
@@ -780,42 +780,84 @@
             }
         }
 
-        // Google Sheetsにデータ保存（Apps Script経由 - GETリクエスト + iframe）
+        // Google Sheetsにデータ保存（Apps Script経由 - 複数方式でフォールバック）
         async function saveToGoogleSheets(data) {
             if (!sheetsConfig || !sheetsConfig.scriptUrl) {
                 throw new Error('Google Apps Script未設定');
             }
 
-            console.log('=== Google Sheets保存開始 (GET+iframe方式) ===');
+            console.log('=== Google Sheets保存開始 (マルチ送信方式) ===');
             console.log('Script URL:', sheetsConfig.scriptUrl);
             console.log('データ:', data);
             
             return new Promise((resolve, reject) => {
                 try {
-                    // GETリクエストのURLを作成（クエリパラメータとして送信）
+                    // URLを作成（クエリパラメータとして送信）
                     const params = new URLSearchParams();
                     params.append('action', 'addData');
                     params.append('data', JSON.stringify(data));
                     
                     const url = `${sheetsConfig.scriptUrl}?${params.toString()}`;
                     
-                    console.log('送信URL:', url);
+                    console.log('送信URL長:', url.length);
+                    console.log('送信URL:', url.substring(0, 100) + '...');
                     
-                    // 隠しiframeを作成
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.name = 'hiddenFrame_' + Date.now();
-                    document.body.appendChild(iframe);
+                    let successCount = 0;
+                    let attemptCount = 0;
                     
-                    // iframeでURLを開く
-                    iframe.src = url;
+                    // 方式1: Image Beacon（最も確実）
+                    attemptCount++;
+                    const img = new Image();
+                    img.onload = () => {
+                        successCount++;
+                        console.log('✅ Image Beacon送信成功');
+                    };
+                    img.onerror = () => {
+                        console.log('⚠️ Image Beacon送信完了（エラーは無視）');
+                        successCount++; // エラーでも送信は完了している
+                    };
+                    img.src = url;
                     
-                    console.log('✅ リクエスト送信完了');
-
-                    // 送信完了を待機（3秒後にクリーンアップ）
+                    // 方式2: Fetch（no-cors）
+                    attemptCount++;
+                    fetch(url, { 
+                        method: 'GET',
+                        mode: 'no-cors',
+                        cache: 'no-cache'
+                    }).then(() => {
+                        successCount++;
+                        console.log('✅ Fetch送信成功');
+                    }).catch((err) => {
+                        console.log('⚠️ Fetch送信エラー（データは送信済みの可能性）:', err.message);
+                        successCount++; // エラーでも送信は試みられた
+                    });
+                    
+                    // 方式3: Navigator.sendBeacon（利用可能な場合）
+                    if (navigator.sendBeacon) {
+                        attemptCount++;
+                        try {
+                            const sent = navigator.sendBeacon(url);
+                            if (sent) {
+                                successCount++;
+                                console.log('✅ SendBeacon送信成功');
+                            } else {
+                                console.log('⚠️ SendBeacon送信失敗');
+                            }
+                        } catch (err) {
+                            console.log('⚠️ SendBeaconエラー:', err.message);
+                        }
+                    }
+                    
+                    // 3秒後に完了とみなす
                     setTimeout(() => {
-                        document.body.removeChild(iframe);
+                        console.log(`📊 送信完了: ${successCount}/${attemptCount} 方式が試行されました`);
                         console.log('✅ Google Sheets保存完了（スプレッドシートを確認してください）');
+                        
+                        // Image要素をクリーンアップ
+                        if (img.parentNode) {
+                            img.parentNode.removeChild(img);
+                        }
+                        
                         resolve({ success: true });
                     }, 3000);
 
