@@ -734,40 +734,57 @@
             }
         }
 
-        // Google Sheetsにデータ保存（Apps Script経由）
+        // Google Sheetsにデータ保存（Apps Script経由 - iframe使用）
         async function saveToGoogleSheets(data) {
             if (!sheetsConfig || !sheetsConfig.scriptUrl) {
                 throw new Error('Google Apps Script未設定');
             }
 
-            console.log('=== Google Sheets保存開始 ===');
+            console.log('=== Google Sheets保存開始 (iframe方式) ===');
             console.log('Script URL:', sheetsConfig.scriptUrl);
             console.log('データ:', data);
             
-            try {
-                // no-corsモードでリクエストを送信
-                // 注意: レスポンスは読めないが、リクエストは送信される
-                await fetch(sheetsConfig.scriptUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'text/plain'
-                    },
-                    body: JSON.stringify(data)
-                });
+            return new Promise((resolve, reject) => {
+                try {
+                    // 隠しiframeを作成
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.name = 'hiddenFrame_' + Date.now();
+                    document.body.appendChild(iframe);
 
-                console.log('✅ Google Sheets保存リクエスト送信完了');
-                console.log('💡 no-corsモードのため、レスポンスは確認できません');
-                console.log('💡 スプレッドシートを直接確認してデータが追加されているか確認してください');
-                
-                // no-corsモードではレスポンスが読めないため、成功とみなす
-                return { success: true };
-                
-            } catch (error) {
-                console.error('❌ Google Sheets保存エラー:', error);
-                console.error('エラーメッセージ:', error.message);
-                throw error;
-            }
+                    // フォームを作成
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = sheetsConfig.scriptUrl;
+                    form.target = iframe.name;
+
+                    // データをJSON文字列として送信
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'data';
+                    input.value = JSON.stringify(data);
+                    form.appendChild(input);
+
+                    // フォームをDOMに追加してsubmit
+                    document.body.appendChild(form);
+                    form.submit();
+
+                    console.log('✅ フォーム送信完了');
+
+                    // 送信完了を待機（2秒後にクリーンアップ）
+                    setTimeout(() => {
+                        document.body.removeChild(form);
+                        document.body.removeChild(iframe);
+                        console.log('✅ Google Sheets保存完了（スプレッドシートを確認してください）');
+                        resolve({ success: true });
+                    }, 2000);
+
+                } catch (error) {
+                    console.error('❌ Google Sheets保存エラー:', error);
+                    console.error('エラーメッセージ:', error.message);
+                    reject(error);
+                }
+            });
         }
 
 
