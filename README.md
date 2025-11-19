@@ -1,0 +1,1 @@
+# fujimino-dayry-report
