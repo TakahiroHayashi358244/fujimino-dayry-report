@@ -975,21 +975,35 @@
                 new Date().toISOString()
             ]];
 
+            console.log('=== Google Sheets保存開始 ===');
+            console.log('スプレッドシートID:', sheetsConfig.spreadsheetId);
+            console.log('範囲:', `${sheetsConfig.sheetName}!A:I`);
+            console.log('データ:', values);
+            
             try {
                 const response = await gapi.client.sheets.spreadsheets.values.append({
                     spreadsheetId: sheetsConfig.spreadsheetId,
                     range: `${sheetsConfig.sheetName}!A:I`,
                     valueInputOption: 'RAW',
-                    insertDataOption: 'INSERT_ROWS'
-                }, {
-                    values: values
+                    insertDataOption: 'INSERT_ROWS',
+                    resource: {
+                        values: values
+                    }
                 });
 
-                console.log('Google Sheets保存成功:', response);
+                console.log('✅ Google Sheets保存成功:', response);
                 return response;
             } catch (error) {
-                console.error('Google Sheets保存エラー:', error);
+                console.error('❌ Google Sheets保存エラー:', error);
+                console.error('エラーメッセージ:', error.message);
                 console.error('エラー詳細:', error.result || error);
+                
+                // エラーの詳細情報を取得
+                if (error.result && error.result.error) {
+                    console.error('API エラーコード:', error.result.error.code);
+                    console.error('API エラーメッセージ:', error.result.error.message);
+                }
+                
                 throw error;
             }
         }
