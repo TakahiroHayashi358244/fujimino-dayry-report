@@ -596,35 +596,20 @@
             updateMonthFilters();
             displayData();
             setupCalculationPreview();
-            updateSyncStatus();
+            
+            // 初期同期ステータス設定
+            if (!sheetsConfig) {
+                updateSyncStatus('offline', '未設定');
+            } else if (isOnline) {
+                updateSyncStatus('synced', 'オンライン');
+            } else {
+                updateSyncStatus('offline', 'オフライン');
+            }
             
             // オンライン/オフライン検出
             window.addEventListener('online', handleOnline);
             window.addEventListener('offline', handleOffline);
         });
-            if (!gapiLoaded || !sheetsConfig) {
-                console.log('初期化スキップ: gapiLoaded=', gapiLoaded, 'sheetsConfig=', !!sheetsConfig);
-                return;
-            }
-
-            try {
-                console.log('=== Google Sheets APIクライアント初期化 ===');
-                
-                // タイムアウト設定(20秒)
-                const timeout = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('初期化タイムアウト(20秒)')), 20000)
-                );
-                
-                const initPromise = (async () => {
-                    console.log('gapi.client.init を呼び出し中...');
-                    await gapi.client.init({
-                        apiKey: sheetsConfig.apiKey,
-                    });
-                    console.log('gapi.client.init 完了');
-                    
-                    console.log('sheets v4 を読み込み中...');
-                    await gapi.client.load('sheets', 'v4');
-                    console.log('sheets v4 読み込み完了');
 
         // 設定ステータス更新
         function updateConfigStatus(valid, message = '') {
@@ -840,8 +825,11 @@
 
         // 今日の日付をセット
         function setTodayDate() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date').value = today;
+            const dateInput = document.getElementById('date');
+            if (dateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+            }
         }
 
         // 計算プレビューの設定
@@ -849,8 +837,10 @@
             const inputs = ['workCost', 'staffCount', 'shiftType'];
             inputs.forEach(id => {
                 const element = document.getElementById(id);
-                element.addEventListener('input', updateCalculationPreview);
-                element.addEventListener('change', updateCalculationPreview);
+                if (element) {
+                    element.addEventListener('input', updateCalculationPreview);
+                    element.addEventListener('change', updateCalculationPreview);
+                }
             });
         }
 
@@ -1029,15 +1019,23 @@
         function updateSyncStatus(status, text) {
             const statusDiv = document.getElementById('syncStatus');
             const statusText = document.getElementById('syncStatusText');
+            
+            if (!statusDiv || !statusText) {
+                console.warn('同期ステータス要素が見つかりません');
+                return;
+            }
+            
             const spinner = statusDiv.querySelector('.spinner');
             
             statusDiv.className = `sync-status ${status}`;
             statusText.textContent = text || status;
             
-            if (status === 'syncing') {
-                spinner.style.display = 'inline-block';
-            } else {
-                spinner.style.display = 'none';
+            if (spinner) {
+                if (status === 'syncing') {
+                    spinner.style.display = 'inline-block';
+                } else {
+                    spinner.style.display = 'none';
+                }
             }
         }
 
@@ -1056,14 +1054,20 @@
 
         // データ表示
         function displayData() {
-            const monthFilter = document.getElementById('monthFilter').value;
+            const monthFilter = document.getElementById('monthFilter');
+            const tbody = document.getElementById('dataTableBody');
+            
+            if (!monthFilter || !tbody) {
+                console.warn('表示要素が見つかりません');
+                return;
+            }
+            
             let filteredData = dailyData;
 
-            if (monthFilter) {
-                filteredData = dailyData.filter(d => d.date.startsWith(monthFilter));
+            if (monthFilter.value) {
+                filteredData = dailyData.filter(d => d.date.startsWith(monthFilter.value));
             }
 
-            const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = '';
 
             filteredData.forEach((data, index) => {
@@ -1085,6 +1089,21 @@
                     <td>${syncBadge}</td>
                     <td>
                         <div class="actions">
+                            <button class="btn-small btn-edit" onclick="editData(${actualIndex})">編集</button>
+                            <button class="btn-small btn-delete" onclick="deleteData(${actualIndex})">削除</button>
+                        </div>
+                    </td>
+                `;
+            });
+
+            // 未同期データカウント
+            const pendingCount = dailyData.filter(d => !d.synced).length;
+            if (pendingCount > 0) {
+                updateSyncStatus('pending', `${pendingCount}件同期待ち`);
+            } else if (isOnline && sheetsConfig) {
+                updateSyncStatus('synced', '同期完了');
+            }
+        }
                             <button class="btn-small btn-edit" onclick="editData(${actualIndex})">編集</button>
                             <button class="btn-small btn-delete" onclick="deleteData(${actualIndex})">削除</button>
                         </div>
@@ -1149,9 +1168,14 @@
 
         // 月フィルター更新
         function updateMonthFilters() {
-            const months = [...new Set(dailyData.map(d => d.date.substring(0, 7)))].sort().reverse();
-            
             const monthFilter = document.getElementById('monthFilter');
+            
+            if (!monthFilter) {
+                console.warn('monthFilter要素が見つかりません');
+                return;
+            }
+            
+            const months = [...new Set(dailyData.map(d => d.date.substring(0, 7)))].sort().reverse();
             const currentMonth = monthFilter.value;
             
             monthFilter.innerHTML = '<option value="">全期間</option>';
