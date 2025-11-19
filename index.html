@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ふじみ野日報 - Google Sheets連携版</title>
+    <title>ふじみ野日報 - Google Apps Script版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://apis.google.com/js/api.js"></script>
     <style>
         * {
             margin: 0;
@@ -479,54 +478,28 @@
                 </div>
 
                 <div class="alert alert-info">
-                    <strong>📚 設定手順書を確認してください</strong><br>
-                    Google Cloud ConsoleでAPIキーを取得し、スプレッドシートを準備してから以下を入力してください。
+                    <strong>📚 Google Apps Script設定手順</strong><br>
+                    1. スプレッドシートで「拡張機能」→「Apps Script」を開く<br>
+                    2. 提供されたスクリプトコードを貼り付け<br>
+                    3. 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」<br>
+                    4. 「アクセスできるユーザー」を「全員」に設定<br>
+                    5. デプロイ後のURLをコピーして下記に入力
                 </div>
 
                 <div class="alert alert-warning">
                     <strong>⚠️ よくある問題</strong><br>
                     <ul style="margin: 10px 0 0 20px; padding: 0;">
-                        <li>「接続テスト中...」から進まない → APIキーの制限設定を確認</li>
-                        <li>「API key not valid」→ APIキーをコピペし直す</li>
-                        <li>「Permission denied」→ スプレッドシートを「リンクを知っている全員」に共有</li>
+                        <li>「接続テスト」が失敗 → URLが正しいか確認</li>
+                        <li>「Permission denied」→ デプロイ設定で「全員」を選択</li>
+                        <li>スクリプト内のSHEET_NAMEを実際のシート名に変更</li>
                     </ul>
                 </div>
 
                 <form id="sheetsConfigForm" onsubmit="saveSheetsConfig(event)">
                     <div class="form-group">
-                        <label>認証方式</label>
-                        <select id="authMethod" onchange="toggleAuthFields()">
-                            <option value="apikey">APIキー(簡単)</option>
-                            <option value="oauth">OAuth認証(より安全)</option>
-                        </select>
-                    </div>
-
-                    <div id="apiKeyFields">
-                        <div class="form-group">
-                            <label>Google Sheets API Key *</label>
-                            <input type="text" id="apiKey" placeholder="AIzaSy...">
-                            <small>Google Cloud Consoleで取得したAPIキーを入力</small>
-                        </div>
-                    </div>
-
-                    <div id="oauthFields" style="display: none;">
-                        <div class="form-group">
-                            <label>OAuth Client ID *</label>
-                            <input type="text" id="clientId" placeholder="123456789012-...">
-                            <small>Google Cloud Consoleで取得したクライアントIDを入力</small>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>スプレッドシートID *</label>
-                        <input type="text" id="spreadsheetId" placeholder="1BxiMVs0XRA5nFMd...">
-                        <small>Google SheetsのURLから取得したIDを入力</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>シート名</label>
-                        <input type="text" id="sheetName" value="シート1">
-                        <small>スプレッドシート内のシート名(デフォルト: シート1)</small>
+                        <label>Google Apps Script URL *</label>
+                        <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/AKfycby.../exec">
+                        <small>Apps Scriptをウェブアプリとしてデプロイした後のURLを入力</small>
                     </div>
 
                     <button type="submit" class="btn btn-primary">💾 設定を保存</button>
@@ -541,10 +514,13 @@
                 <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <h3 style="margin-bottom: 10px;">📖 クイックガイド</h3>
                     <ol style="padding-left: 20px; line-height: 1.8;">
-                        <li>Google Cloud ConsoleでプロジェクトとAPIキーを作成</li>
-                        <li>Google Sheetsで新しいスプレッドシートを作成</li>
-                        <li>スプレッドシートを「リンクを知っている全員」に共有</li>
-                        <li>上記フォームに情報を入力</li>
+                        <li>対象のGoogle Sheetsを開く</li>
+                        <li>「拡張機能」→「Apps Script」をクリック</li>
+                        <li>提供されたスクリプトコードを貼り付け（SHEET_NAMEを実際のシート名に変更）</li>
+                        <li>「デプロイ」→「新しいデプロイ」→「ウェブアプリ」を選択</li>
+                        <li>「アクセスできるユーザー」を「全員」に設定してデプロイ</li>
+                        <li>デプロイ後のURL（.../exec で終わるURL）をコピー</li>
+                        <li>上記フォームにURLを貼り付け</li>
                         <li>「接続テスト」で動作確認</li>
                     </ol>
                 </div>
@@ -609,7 +585,6 @@
             nightRate: 1938
         };
         let sheetsConfig = null;
-        let gapiLoaded = false;
         let isOnline = navigator.onLine;
 
         // 初期化
@@ -621,53 +596,12 @@
             updateMonthFilters();
             displayData();
             setupCalculationPreview();
-            initGoogleAPI();
             updateSyncStatus();
             
             // オンライン/オフライン検出
             window.addEventListener('online', handleOnline);
             window.addEventListener('offline', handleOffline);
         });
-
-        // Google API初期化
-        function initGoogleAPI() {
-            console.log('=== Google API初期化開始 ===');
-            console.log('Google APIスクリプトが読み込まれているか:', typeof gapi !== 'undefined');
-            
-            if (typeof gapi === 'undefined') {
-                console.error('gapiが定義されていません。Google APIスクリプトの読み込みに失敗している可能性があります。');
-                updateSyncStatus('offline', 'API読み込み失敗');
-                return;
-            }
-            
-            gapi.load('client', async () => {
-                gapiLoaded = true;
-                console.log('Google API Client loaded successfully');
-                console.log('gapiクライアント:', gapi.client);
-                
-                if (sheetsConfig) {
-                    console.log('設定が存在するため、APIクライアントを初期化します');
-                    console.log('設定内容:', {
-                        apiKey: sheetsConfig.apiKey ? sheetsConfig.apiKey.substring(0, 20) + '...' : 'なし',
-                        spreadsheetId: sheetsConfig.spreadsheetId,
-                        sheetName: sheetsConfig.sheetName
-                    });
-                    
-                    try {
-                        await initializeGapiClient();
-                    } catch (error) {
-                        console.error('初期化エラー:', error);
-                        updateSyncStatus('offline', '初期化失敗');
-                    }
-                } else {
-                    console.log('Google Sheets設定がまだ保存されていません');
-                    updateSyncStatus('offline', '未設定');
-                }
-            });
-        }
-
-        // Google APIクライアント初期化
-        async function initializeGapiClient() {
             if (!gapiLoaded || !sheetsConfig) {
                 console.log('初期化スキップ: gapiLoaded=', gapiLoaded, 'sheetsConfig=', !!sheetsConfig);
                 return;
@@ -691,29 +625,6 @@
                     console.log('sheets v4 を読み込み中...');
                     await gapi.client.load('sheets', 'v4');
                     console.log('sheets v4 読み込み完了');
-                    
-                    console.log('gapi.client.sheets が利用可能:', !!gapi.client.sheets);
-                })();
-                
-                await Promise.race([initPromise, timeout]);
-                
-                console.log('Google Sheets API初期化成功');
-                updateConfigStatus(true);
-                
-                // バックグラウンドで未同期データを同期(エラーは無視)
-                syncPendingData().catch(err => {
-                    console.log('バックグラウンド同期をスキップ:', err.message);
-                });
-            } catch (error) {
-                console.error('=== Google API初期化エラー ===');
-                console.error('エラー詳細:', error);
-                updateConfigStatus(false, error.message);
-                
-                if (error.message.includes('タイムアウト')) {
-                    console.error('初期化がタイムアウトしました。ネットワークまたはAPIキーに問題がある可能性があります。');
-                }
-            }
-        }
 
         // 設定ステータス更新
         function updateConfigStatus(valid, message = '') {
@@ -732,27 +643,7 @@
             const saved = localStorage.getItem('fushimino_sheets_config');
             if (saved) {
                 sheetsConfig = JSON.parse(saved);
-                document.getElementById('authMethod').value = sheetsConfig.useOAuth ? 'oauth' : 'apikey';
-                document.getElementById('apiKey').value = sheetsConfig.apiKey || '';
-                document.getElementById('clientId').value = sheetsConfig.clientId || '';
-                document.getElementById('spreadsheetId').value = sheetsConfig.spreadsheetId || '';
-                document.getElementById('sheetName').value = sheetsConfig.sheetName || 'シート1';
-                toggleAuthFields();
-            }
-        }
-
-        // 認証方式切り替え
-        function toggleAuthFields() {
-            const method = document.getElementById('authMethod').value;
-            const apiKeyFields = document.getElementById('apiKeyFields');
-            const oauthFields = document.getElementById('oauthFields');
-            
-            if (method === 'oauth') {
-                apiKeyFields.style.display = 'none';
-                oauthFields.style.display = 'block';
-            } else {
-                apiKeyFields.style.display = 'block';
-                oauthFields.style.display = 'none';
+                document.getElementById('scriptUrl').value = sheetsConfig.scriptUrl || '';
             }
         }
 
@@ -760,44 +651,25 @@
         function saveSheetsConfig(event) {
             event.preventDefault();
             
-            const method = document.getElementById('authMethod').value;
-            const useOAuth = method === 'oauth';
+            const scriptUrl = document.getElementById('scriptUrl').value.trim();
             
+            if (!scriptUrl) {
+                alert('Google Apps Script URLは必須です');
+                return;
+            }
+
+            if (!scriptUrl.includes('script.google.com') || !scriptUrl.includes('/exec')) {
+                alert('URLが正しくありません。Apps Scriptのデプロイ URL（/exec で終わる）を入力してください');
+                return;
+            }
+
             sheetsConfig = {
-                useOAuth: useOAuth,
-                apiKey: useOAuth ? null : document.getElementById('apiKey').value.trim(),
-                clientId: useOAuth ? document.getElementById('clientId').value.trim() : null,
-                spreadsheetId: document.getElementById('spreadsheetId').value.trim(),
-                sheetName: document.getElementById('sheetName').value.trim() || 'シート1'
+                scriptUrl: scriptUrl
             };
 
-            if (!sheetsConfig.spreadsheetId) {
-                alert('スプレッドシートIDは必須です');
-                return;
-            }
-
-            if (!useOAuth && !sheetsConfig.apiKey) {
-                alert('APIキーは必須です');
-                return;
-            }
-
-            if (useOAuth && !sheetsConfig.clientId) {
-                alert('クライアントIDは必須です');
-                return;
-            }
-
             localStorage.setItem('fushimino_sheets_config', JSON.stringify(sheetsConfig));
-            alert('Google Sheets設定を保存しました');
-            
-            if (gapiLoaded) {
-                console.log('APIクライアントを再初期化します');
-                initializeGapiClient().catch(err => {
-                    console.error('初期化エラー:', err);
-                    alert('⚠️ 設定は保存されましたが、初期化に失敗しました。「接続テスト」を試してください。');
-                });
-            } else {
-                alert('Google APIの読み込み中です。しばらく待ってから「接続テスト」を実行してください。');
-            }
+            alert('Google Apps Script設定を保存しました');
+            updateConfigStatus(true);
         }
 
         // デバッグ情報表示
@@ -809,25 +681,10 @@
             info.push(`オンライン: ${navigator.onLine ? 'はい' : 'いいえ'}`);
             info.push('');
             
-            info.push('=== Google API状態 ===');
-            info.push(`gapiが定義されているか: ${typeof gapi !== 'undefined' ? 'はい' : 'いいえ'}`);
-            info.push(`gapiLoaded: ${gapiLoaded ? 'はい' : 'いいえ'}`);
-            
-            if (typeof gapi !== 'undefined' && gapi.client) {
-                info.push(`gapi.client が存在: はい`);
-                info.push(`gapi.client.sheets が存在: ${gapi.client.sheets ? 'はい' : 'いいえ'}`);
-            } else {
-                info.push(`gapi.client が存在: いいえ`);
-            }
-            info.push('');
-            
-            info.push('=== Google Sheets設定 ===');
+            info.push('=== Google Apps Script設定 ===');
             if (sheetsConfig) {
                 info.push(`設定済み: はい`);
-                info.push(`APIキー: ${sheetsConfig.apiKey ? sheetsConfig.apiKey.substring(0, 20) + '...' : 'なし'}`);
-                info.push(`スプレッドシートID: ${sheetsConfig.spreadsheetId || 'なし'}`);
-                info.push(`シート名: ${sheetsConfig.sheetName || 'なし'}`);
-                info.push(`OAuth使用: ${sheetsConfig.useOAuth ? 'はい' : 'いいえ'}`);
+                info.push(`Script URL: ${sheetsConfig.scriptUrl || 'なし'}`);
             } else {
                 info.push(`設定済み: いいえ`);
             }
@@ -840,20 +697,11 @@
             
             info.push('=== 推奨アクション ===');
             
-            if (typeof gapi === 'undefined') {
-                info.push('❌ Google APIスクリプトが読み込まれていません');
-                info.push('→ ページをリロード(F5)してください');
-            } else if (!gapiLoaded) {
-                info.push('⚠️ Google APIクライアントが読み込み中です');
-                info.push('→ 数秒待ってから再試行してください');
-            } else if (!sheetsConfig) {
-                info.push('⚠️ Google Sheets設定が未保存です');
-                info.push('→ APIキーとスプレッドシートIDを入力して保存してください');
-            } else if (!gapi.client.sheets) {
-                info.push('⚠️ Google Sheets APIが初期化されていません');
-                info.push('→ 「接続テスト」ボタンをクリックしてください');
+            if (!sheetsConfig) {
+                info.push('⚠️ Google Apps Script設定が未保存です');
+                info.push('→ Script URLを入力して保存してください');
             } else {
-                info.push('✅ すべて正常です');
+                info.push('✅ 設定は保存されています');
                 info.push('→ 「接続テスト」で確認してください');
             }
             
@@ -864,83 +712,45 @@
 
         // 接続テスト
         async function testConnection() {
-            if (!sheetsConfig) {
-                alert('先に設定を保存してください');
-                return;
-            }
-
-            if (!gapiLoaded) {
-                alert('Google APIの読み込み中です。ページをリロード(F5)してから再試行してください。');
+            if (!sheetsConfig || !sheetsConfig.scriptUrl) {
+                alert('先にGoogle Apps Script URLを設定してください');
                 return;
             }
 
             try {
                 updateSyncStatus('syncing', '接続テスト中...');
                 console.log('=== 接続テスト開始 ===');
-                console.log('APIキー:', sheetsConfig.apiKey.substring(0, 20) + '...');
-                console.log('スプレッドシートID:', sheetsConfig.spreadsheetId);
-                console.log('シート名:', sheetsConfig.sheetName);
+                console.log('Script URL:', sheetsConfig.scriptUrl);
                 
-                // タイムアウト設定(30秒)
-                const timeout = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('接続がタイムアウトしました(30秒)')), 30000)
-                );
-                
-                // APIクライアントが初期化されていない場合は初期化
-                if (!gapi.client.sheets) {
-                    console.log('Google Sheets APIを初期化中...');
-                    
-                    const initPromise = (async () => {
-                        await gapi.client.init({
-                            apiKey: sheetsConfig.apiKey,
-                        });
-                        console.log('gapi.client.init 完了');
-                        
-                        await gapi.client.load('sheets', 'v4');
-                        console.log('sheets v4 読み込み完了');
-                    })();
-                    
-                    await Promise.race([initPromise, timeout]);
-                }
-                
-                console.log('スプレッドシートにアクセス中...');
-                
-                // テスト読み込み
-                const testPromise = gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: sheetsConfig.spreadsheetId,
-                    range: `${sheetsConfig.sheetName}!A1:A1`
+                const response = await fetch(sheetsConfig.scriptUrl, {
+                    method: 'GET',
+                    redirect: 'follow'
                 });
                 
-                const response = await Promise.race([testPromise, timeout]);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
-                console.log('接続成功!', response);
-                updateSyncStatus('synced', '接続成功!');
-                alert('✅ Google Sheetsへの接続に成功しました!');
-                updateConfigStatus(true);
+                const result = await response.json();
+                console.log('接続成功!', result);
+                
+                if (result.success) {
+                    updateSyncStatus('synced', '接続成功!');
+                    alert(`✅ 接続に成功しました!\n\n${result.message}\n\nデータ:\n- スプレッドシートID: ${result.data?.spreadsheetId}\n- シート名: ${result.data?.sheetName}\n- 最終行: ${result.data?.lastRow}`);
+                    updateConfigStatus(true);
+                } else {
+                    throw new Error(result.message || '不明なエラー');
+                }
             } catch (error) {
                 console.error('=== 接続テストエラー ===');
                 console.error('エラー詳細:', error);
-                console.error('エラータイプ:', error.constructor.name);
-                console.error('エラーメッセージ:', error.message);
                 
                 updateSyncStatus('offline', '接続失敗');
                 
-                let errorMessage = error.message || 'Unknown error';
+                let errorMessage = error.message || '不明なエラー';
                 
-                // より詳細なエラーメッセージ
-                if (error.message && error.message.includes('タイムアウト')) {
-                    errorMessage = 'ネットワークまたはAPIの応答が遅すぎます。\n\n対処法:\n1. インターネット接続を確認\n2. APIキーの制限設定を確認\n3. しばらく待ってから再試行';
-                } else if (error.result && error.result.error) {
-                    const apiError = error.result.error;
-                    errorMessage = apiError.message;
-                    
-                    if (apiError.code === 403) {
-                        errorMessage += '\n\n対処法:\n1. APIキーが正しいか確認\n2. Google Sheets APIが有効か確認\n3. APIキーの制限を確認';
-                    } else if (apiError.code === 404) {
-                        errorMessage += '\n\n対処法:\n1. スプレッドシートIDが正しいか確認\n2. スプレッドシートが削除されていないか確認';
-                    }
-                } else if (error.status === 0) {
-                    errorMessage = 'ネットワークエラー: APIサーバーに接続できません\n\n対処法:\n1. インターネット接続を確認\n2. ファイアウォールを確認\n3. VPNを使用している場合は無効化してみる';
+                if (error.message && error.message.includes('Failed to fetch')) {
+                    errorMessage = 'ネットワークエラー: Apps Scriptに接続できません\n\n対処法:\n1. URLが正しいか確認\n2. Apps Scriptが「全員」にアクセス許可しているか確認\n3. インターネット接続を確認';
                 }
                 
                 alert('❌ 接続に失敗しました:\n\n' + errorMessage);
@@ -948,65 +758,46 @@
             }
         }
 
-        // Google Sheetsにデータ保存
+        // Google Sheetsにデータ保存（Apps Script経由）
         async function saveToGoogleSheets(data) {
-            if (!sheetsConfig || !gapiLoaded) {
-                throw new Error('Google Sheets未設定');
+            if (!sheetsConfig || !sheetsConfig.scriptUrl) {
+                throw new Error('Google Apps Script未設定');
             }
-
-            // APIクライアントが初期化されていない場合は初期化
-            if (!gapi.client.sheets) {
-                console.log('Google Sheets APIを初期化します...');
-                await gapi.client.init({
-                    apiKey: sheetsConfig.apiKey,
-                });
-                await gapi.client.load('sheets', 'v4');
-            }
-
-            const values = [[
-                data.date,
-                data.workCost,
-                data.workFee,
-                data.management,
-                data.staffCount,
-                data.shiftType === 'night' ? '夜勤' : '通常',
-                data.expense,
-                data.profit,
-                new Date().toISOString()
-            ]];
 
             console.log('=== Google Sheets保存開始 ===');
-            console.log('スプレッドシートID:', sheetsConfig.spreadsheetId);
-            console.log('範囲:', `${sheetsConfig.sheetName}!A:I`);
-            console.log('データ:', values);
+            console.log('Script URL:', sheetsConfig.scriptUrl);
+            console.log('データ:', data);
             
             try {
-                const response = await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: sheetsConfig.spreadsheetId,
-                    range: `${sheetsConfig.sheetName}!A:I`,
-                    valueInputOption: 'RAW',
-                    insertDataOption: 'INSERT_ROWS',
-                    resource: {
-                        values: values
-                    }
+                const response = await fetch(sheetsConfig.scriptUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data),
+                    redirect: 'follow'
                 });
 
-                console.log('✅ Google Sheets保存成功:', response);
-                return response;
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('Apps Script レスポンス:', result);
+
+                if (result.success) {
+                    console.log('✅ Google Sheets保存成功');
+                    return result;
+                } else {
+                    throw new Error(result.message || '保存に失敗しました');
+                }
             } catch (error) {
                 console.error('❌ Google Sheets保存エラー:', error);
                 console.error('エラーメッセージ:', error.message);
-                console.error('エラー詳細:', error.result || error);
-                
-                // エラーの詳細情報を取得
-                if (error.result && error.result.error) {
-                    console.error('API エラーコード:', error.result.error.code);
-                    console.error('API エラーメッセージ:', error.result.error.message);
-                }
-                
                 throw error;
             }
         }
+
 
         // 設定の読み込み
         function loadSettings() {
@@ -1182,7 +973,7 @@
             if (!sheetsConfig || !isOnline) {
                 console.log('同期スキップ: オフラインまたは未設定');
                 if (showAlert) {
-                    alert('オフラインまたはGoogle Sheets未設定です');
+                    alert('オフラインまたはGoogle Apps Script未設定です');
                 }
                 return;
             }
@@ -1198,24 +989,6 @@
                     updateSyncStatus('synced', '同期完了');
                 }
                 return;
-            }
-
-            // APIクライアントが初期化されていない場合は初期化
-            if (!gapi.client.sheets) {
-                console.log('Google Sheets APIを初期化します...');
-                try {
-                    await gapi.client.init({
-                        apiKey: sheetsConfig.apiKey,
-                    });
-                    await gapi.client.load('sheets', 'v4');
-                } catch (error) {
-                    console.error('API初期化エラー:', error);
-                    updateSyncStatus('offline', '初期化失敗');
-                    if (showAlert) {
-                        alert('❌ API初期化に失敗しました: ' + error.message);
-                    }
-                    return;
-                }
             }
 
             updateSyncStatus('syncing', `${pendingData.length}件同期中...`);
