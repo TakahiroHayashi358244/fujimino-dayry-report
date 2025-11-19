@@ -378,7 +378,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 ふし_み野日報 - Google Sheets連携版</h1>
+            <h1>📊 ふじみ野日報 - Google Sheets連携版</h1>
             <p>日々の作業データを記録・自動同期</p>
             <div id="syncStatus" class="sync-status offline">
                 <span class="spinner" style="display: none;"></span>
@@ -1435,11 +1435,11 @@
 
             const ws = XLSX.utils.json_to_sheet(exportData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'ふし_み野日報');
+            XLSX.utils.book_append_sheet(wb, ws, 'ふじみ野日報');
 
             const filename = monthFilter ? 
-                `ふし_み野日報_${monthFilter}.xlsx` : 
-                `ふし_み野日報_全期間.xlsx`;
+                `ふじみ野日報_${monthFilter}.xlsx` : 
+                `ふじみ野日報_全期間.xlsx`;
 
             XLSX.writeFile(wb, filename);
         }
