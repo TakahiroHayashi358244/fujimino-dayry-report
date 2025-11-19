@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ふし_み野日報 - Google Sheets連携版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Mequlibri, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .sync-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .sync-status.synced {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .sync-status.syncing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .sync-status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .sync-status.pending {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 10px rgba(102,126,234,0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .data-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+
+        td:first-child, th:first-child {
+            text-align: left;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .positive {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .month-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .month-selector select {
+            flex: 1;
+            min-width: 150px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .tabs {
+                justify-content: flex-start;
+            }
+
+            .tab-btn {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .month-selector {
+                flex-direction: column;
+            }
+
+            .month-selector select,
+            .month-selector button {
+                width: 100%;
+            }
+        }
+
+        .config-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .config-status.valid {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .config-status.invalid {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0,0,0,.1);
+            border-left-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 ふし_み野日報 - Google Sheets連携版</h1>
+            <p>日々の作業データを記録・自動同期</p>
+            <div id="syncStatus" class="sync-status offline">
+                <span class="spinner" style="display: none;"></span>
+                <span id="syncStatusText">オフライン</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('input')">📝 データ入力</button>
+            <button class="tab-btn" onclick="switchTab('list')">📋 一覧表示</button>
+            <button class="tab-btn" onclick="switchTab('sheets')">🔗 Google Sheets設定</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ 設定</button>
+        </div>
+
+        <!-- データ入力タブ -->
+        <div id="input-tab" class="tab-content active">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #667eea;">📝 日次データ入力</h2>
+                
+                <form id="dataForm" onsubmit="saveData(event)">
+                    <div class="form-group">
+                        <label>日付 *</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>作業Unit数 *</label>
+                        <input type="number" id="workCost" placeholder="例: 7000" required step="1" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>人数 *</label>
+                        <input type="number" id="staffCount" placeholder="例: 20" required step="1" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>勤務種別 *</label>
+                        <select id="shiftType" required>
+                            <option value="night">夜勤</option>
+                            <option value="normal">通常勤務</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info" id="calculation-preview" style="display: none;">
+                        <strong>計算プレビュー:</strong>
+                        <div id="preview-content" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="submitBtn">💾 保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelEdit()">❌ キャンセル</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 一覧表示タブ -->
+        <div id="list-tab" class="tab-content">
+            <div class="card">
+                <div class="month-selector">
+                    <select id="monthFilter" onchange="filterByMonth()">
+                        <option value="">全期間</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="exportToExcel()" style="width: auto; padding: 10px 20px;">
+                        📥 Excelエクスポート
+                    </button>
+                    <button class="btn btn-success" onclick="syncPendingData(true)" style="width: auto; padding: 10px 20px;">
+                        🔄 手動同期
+                    </button>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>作業Unit数</th>
+                                <th>作業費合計</th>
+                                <th>マネジメント</th>
+                                <th>人数</th>
+                                <th>経費</th>
+                                <th>収支</th>
+                                <th>同期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Google Sheets設定タブ -->
+        <div id="sheets-tab" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #667eea;">🔗 Google Sheets連携設定</h2>
+                
+                <div id="configStatus" class="config-status invalid">
+                    ❌ Google Sheets連携が設定されていません
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>📚 設定手順書を確認してください</strong><br>
+                    Google Cloud ConsoleでAPIキーを取得し、スプレッドシートを準備してから以下を入力してください。
+                </div>
+
+                <div class="alert alert-warning">
+                    <strong>⚠️ よくある問題</strong><br>
+                    <ul style="margin: 10px 0 0 20px; padding: 0;">
+                        <li>「接続テスト中...」から進まない → APIキーの制限設定を確認</li>
+                        <li>「API key not valid」→ APIキーをコピペし直す</li>
+                        <li>「Permission denied」→ スプレッドシートを「リンクを知っている全員」に共有</li>
+                    </ul>
+                </div>
+
+                <form id="sheetsConfigForm" onsubmit="saveSheetsConfig(event)">
+                    <div class="form-group">
+                        <label>認証方式</label>
+                        <select id="authMethod" onchange="toggleAuthFields()">
+                            <option value="apikey">APIキー(簡単)</option>
+                            <option value="oauth">OAuth認証(より安全)</option>
+                        </select>
+                    </div>
+
+                    <div id="apiKeyFields">
+                        <div class="form-group">
+                            <label>Google Sheets API Key *</label>
+                            <input type="text" id="apiKey" placeholder="AIzaSy...">
+                            <small>Google Cloud Consoleで取得したAPIキーを入力</small>
+                        </div>
+                    </div>
+
+                    <div id="oauthFields" style="display: none;">
+                        <div class="form-group">
+                            <label>OAuth Client ID *</label>
+                            <input type="text" id="clientId" placeholder="123456789012-...">
+                            <small>Google Cloud Consoleで取得したクライアントIDを入力</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>スプレッドシートID *</label>
+                        <input type="text" id="spreadsheetId" placeholder="1BxiMVs0XRA5nFMd...">
+                        <small>Google SheetsのURLから取得したIDを入力</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>シート名</label>
+                        <input type="text" id="sheetName" value="シート1">
+                        <small>スプレッドシート内のシート名(デフォルト: シート1)</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">💾 設定を保存</button>
+                    <button type="button" class="btn btn-success" onclick="testConnection()" style="margin-top: 10px;">
+                        🔍 接続テスト
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="showDebugInfo()" style="margin-top: 10px;">
+                        🐛 デバッグ情報を表示
+                    </button>
+                </form>
+
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h3 style="margin-bottom: 10px;">📖 クイックガイド</h3>
+                    <ol style="padding-left: 20px; line-height: 1.8;">
+                        <li>Google Cloud ConsoleでプロジェクトとAPIキーを作成</li>
+                        <li>Google Sheetsで新しいスプレッドシートを作成</li>
+                        <li>スプレッドシートを「リンクを知っている全員」に共有</li>
+                        <li>上記フォームに情報を入力</li>
+                        <li>「接続テスト」で動作確認</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定タブ -->
+        <div id="settings-tab" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #667eea;">⚙️ 基本設定</h2>
+                
+                <form id="settingsForm" onsubmit="saveSettings(event)">
+                    <div class="form-group">
+                        <label>作業単価 (円)</label>
+                        <input type="number" id="unitPrice" value="51" step="1" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>月額マネジメント費 (円)</label>
+                        <input type="number" id="managementFee" value="1530000" step="1000" min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>通常単価 (円/時)</label>
+                        <input type="number" id="normalRate" value="1550" step="10" min="0">
+                        <small style="color: #666;">※通常勤務: 通常単価×8時間で計算</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>夜勤単価 (円/時)</label>
+                        <input type="number" id="nightRate" value="1938" step="10" min="0">
+                        <small style="color: #666;">※夜勤時: 夜勤単価×6時間 + 通常単価×2時間で計算</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">💾 設定を保存</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #dc3545;">⚠️ データ管理</h2>
+                <button class="btn btn-danger" onclick="clearAllData()">🗑️ 全データを削除</button>
+                <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                    ※この操作は取り消せません。実行前にExcelエクスポートでバックアップを取ることをお勧めします。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== Google Sheets設定 ==========
+        // 注意: この設定はブラウザに保存されます
+        // 初回起動時は「Google Sheets設定」タブで設定してください
+        // =======================================
+
+        // グローバル変数
+        let dailyData = [];
+        let editingIndex = -1;
+        let settings = {
+            unitPrice: 51,
+            managementFee: 1530000,
+            normalRate: 1550,
+            nightRate: 1938
+        };
+        let sheetsConfig = null;
+        let gapiLoaded = false;
+        let isOnline = navigator.onLine;
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            loadSheetsConfig();
+            loadData();
+            setTodayDate();
+            updateMonthFilters();
+            displayData();
+            setupCalculationPreview();
+            initGoogleAPI();
+            updateSyncStatus();
+            
+            // オンライン/オフライン検出
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+        });
+
+        // Google API初期化
+        function initGoogleAPI() {
+            console.log('=== Google API初期化開始 ===');
+            console.log('Google APIスクリプトが読み込まれているか:', typeof gapi !== 'undefined');
+            
+            if (typeof gapi === 'undefined') {
+                console.error('gapiが定義されていません。Google APIスクリプトの読み込みに失敗している可能性があります。');
+                updateSyncStatus('offline', 'API読み込み失敗');
+                return;
+            }
+            
+            gapi.load('client', async () => {
+                gapiLoaded = true;
+                console.log('Google API Client loaded successfully');
+                console.log('gapiクライアント:', gapi.client);
+                
+                if (sheetsConfig) {
+                    console.log('設定が存在するため、APIクライアントを初期化します');
+                    console.log('設定内容:', {
+                        apiKey: sheetsConfig.apiKey ? sheetsConfig.apiKey.substring(0, 20) + '...' : 'なし',
+                        spreadsheetId: sheetsConfig.spreadsheetId,
+                        sheetName: sheetsConfig.sheetName
+                    });
+                    
+                    try {
+                        await initializeGapiClient();
+                    } catch (error) {
+                        console.error('初期化エラー:', error);
+                        updateSyncStatus('offline', '初期化失敗');
+                    }
+                } else {
+                    console.log('Google Sheets設定がまだ保存されていません');
+                    updateSyncStatus('offline', '未設定');
+                }
+            });
+        }
+
+        // Google APIクライアント初期化
+        async function initializeGapiClient() {
+            if (!gapiLoaded || !sheetsConfig) {
+                console.log('初期化スキップ: gapiLoaded=', gapiLoaded, 'sheetsConfig=', !!sheetsConfig);
+                return;
+            }
+
+            try {
+                console.log('=== Google Sheets APIクライアント初期化 ===');
+                
+                // タイムアウト設定(20秒)
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('初期化タイムアウト(20秒)')), 20000)
+                );
+                
+                const initPromise = (async () => {
+                    console.log('gapi.client.init を呼び出し中...');
+                    await gapi.client.init({
+                        apiKey: sheetsConfig.apiKey,
+                    });
+                    console.log('gapi.client.init 完了');
+                    
+                    console.log('sheets v4 を読み込み中...');
+                    await gapi.client.load('sheets', 'v4');
+                    console.log('sheets v4 読み込み完了');
+                    
+                    console.log('gapi.client.sheets が利用可能:', !!gapi.client.sheets);
+                })();
+                
+                await Promise.race([initPromise, timeout]);
+                
+                console.log('Google Sheets API初期化成功');
+                updateConfigStatus(true);
+                
+                // バックグラウンドで未同期データを同期(エラーは無視)
+                syncPendingData().catch(err => {
+                    console.log('バックグラウンド同期をスキップ:', err.message);
+                });
+            } catch (error) {
+                console.error('=== Google API初期化エラー ===');
+                console.error('エラー詳細:', error);
+                updateConfigStatus(false, error.message);
+                
+                if (error.message.includes('タイムアウト')) {
+                    console.error('初期化がタイムアウトしました。ネットワークまたはAPIキーに問題がある可能性があります。');
+                }
+            }
+        }
+
+        // 設定ステータス更新
+        function updateConfigStatus(valid, message = '') {
+            const statusDiv = document.getElementById('configStatus');
+            if (valid) {
+                statusDiv.className = 'config-status valid';
+                statusDiv.innerHTML = '✅ Google Sheets連携が有効です';
+            } else {
+                statusDiv.className = 'config-status invalid';
+                statusDiv.innerHTML = `❌ ${message || 'Google Sheets連携が設定されていません'}`;
+            }
+        }
+
+        // Google Sheets設定読み込み
+        function loadSheetsConfig() {
+            const saved = localStorage.getItem('fushimino_sheets_config');
+            if (saved) {
+                sheetsConfig = JSON.parse(saved);
+                document.getElementById('authMethod').value = sheetsConfig.useOAuth ? 'oauth' : 'apikey';
+                document.getElementById('apiKey').value = sheetsConfig.apiKey || '';
+                document.getElementById('clientId').value = sheetsConfig.clientId || '';
+                document.getElementById('spreadsheetId').value = sheetsConfig.spreadsheetId || '';
+                document.getElementById('sheetName').value = sheetsConfig.sheetName || 'シート1';
+                toggleAuthFields();
+            }
+        }
+
+        // 認証方式切り替え
+        function toggleAuthFields() {
+            const method = document.getElementById('authMethod').value;
+            const apiKeyFields = document.getElementById('apiKeyFields');
+            const oauthFields = document.getElementById('oauthFields');
+            
+            if (method === 'oauth') {
+                apiKeyFields.style.display = 'none';
+                oauthFields.style.display = 'block';
+            } else {
+                apiKeyFields.style.display = 'block';
+                oauthFields.style.display = 'none';
+            }
+        }
+
+        // Google Sheets設定保存
+        function saveSheetsConfig(event) {
+            event.preventDefault();
+            
+            const method = document.getElementById('authMethod').value;
+            const useOAuth = method === 'oauth';
+            
+            sheetsConfig = {
+                useOAuth: useOAuth,
+                apiKey: useOAuth ? null : document.getElementById('apiKey').value.trim(),
+                clientId: useOAuth ? document.getElementById('clientId').value.trim() : null,
+                spreadsheetId: document.getElementById('spreadsheetId').value.trim(),
+                sheetName: document.getElementById('sheetName').value.trim() || 'シート1'
+            };
+
+            if (!sheetsConfig.spreadsheetId) {
+                alert('スプレッドシートIDは必須です');
+                return;
+            }
+
+            if (!useOAuth && !sheetsConfig.apiKey) {
+                alert('APIキーは必須です');
+                return;
+            }
+
+            if (useOAuth && !sheetsConfig.clientId) {
+                alert('クライアントIDは必須です');
+                return;
+            }
+
+            localStorage.setItem('fushimino_sheets_config', JSON.stringify(sheetsConfig));
+            alert('Google Sheets設定を保存しました');
+            
+            if (gapiLoaded) {
+                console.log('APIクライアントを再初期化します');
+                initializeGapiClient().catch(err => {
+                    console.error('初期化エラー:', err);
+                    alert('⚠️ 設定は保存されましたが、初期化に失敗しました。「接続テスト」を試してください。');
+                });
+            } else {
+                alert('Google APIの読み込み中です。しばらく待ってから「接続テスト」を実行してください。');
+            }
+        }
+
+        // デバッグ情報表示
+        function showDebugInfo() {
+            const info = [];
+            
+            info.push('=== システム情報 ===');
+            info.push(`ブラウザ: ${navigator.userAgent}`);
+            info.push(`オンライン: ${navigator.onLine ? 'はい' : 'いいえ'}`);
+            info.push('');
+            
+            info.push('=== Google API状態 ===');
+            info.push(`gapiが定義されているか: ${typeof gapi !== 'undefined' ? 'はい' : 'いいえ'}`);
+            info.push(`gapiLoaded: ${gapiLoaded ? 'はい' : 'いいえ'}`);
+            
+            if (typeof gapi !== 'undefined' && gapi.client) {
+                info.push(`gapi.client が存在: はい`);
+                info.push(`gapi.client.sheets が存在: ${gapi.client.sheets ? 'はい' : 'いいえ'}`);
+            } else {
+                info.push(`gapi.client が存在: いいえ`);
+            }
+            info.push('');
+            
+            info.push('=== Google Sheets設定 ===');
+            if (sheetsConfig) {
+                info.push(`設定済み: はい`);
+                info.push(`APIキー: ${sheetsConfig.apiKey ? sheetsConfig.apiKey.substring(0, 20) + '...' : 'なし'}`);
+                info.push(`スプレッドシートID: ${sheetsConfig.spreadsheetId || 'なし'}`);
+                info.push(`シート名: ${sheetsConfig.sheetName || 'なし'}`);
+                info.push(`OAuth使用: ${sheetsConfig.useOAuth ? 'はい' : 'いいえ'}`);
+            } else {
+                info.push(`設定済み: いいえ`);
+            }
+            info.push('');
+            
+            info.push('=== データ状態 ===');
+            info.push(`総データ数: ${dailyData.length}件`);
+            info.push(`未同期データ: ${dailyData.filter(d => !d.synced).length}件`);
+            info.push('');
+            
+            info.push('=== 推奨アクション ===');
+            
+            if (typeof gapi === 'undefined') {
+                info.push('❌ Google APIスクリプトが読み込まれていません');
+                info.push('→ ページをリロード(F5)してください');
+            } else if (!gapiLoaded) {
+                info.push('⚠️ Google APIクライアントが読み込み中です');
+                info.push('→ 数秒待ってから再試行してください');
+            } else if (!sheetsConfig) {
+                info.push('⚠️ Google Sheets設定が未保存です');
+                info.push('→ APIキーとスプレッドシートIDを入力して保存してください');
+            } else if (!gapi.client.sheets) {
+                info.push('⚠️ Google Sheets APIが初期化されていません');
+                info.push('→ 「接続テスト」ボタンをクリックしてください');
+            } else {
+                info.push('✅ すべて正常です');
+                info.push('→ 「接続テスト」で確認してください');
+            }
+            
+            const debugText = info.join('\n');
+            console.log(debugText);
+            alert(debugText);
+        }
+
+        // 接続テスト
+        async function testConnection() {
+            if (!sheetsConfig) {
+                alert('先に設定を保存してください');
+                return;
+            }
+
+            if (!gapiLoaded) {
+                alert('Google APIの読み込み中です。ページをリロード(F5)してから再試行してください。');
+                return;
+            }
+
+            try {
+                updateSyncStatus('syncing', '接続テスト中...');
+                console.log('=== 接続テスト開始 ===');
+                console.log('APIキー:', sheetsConfig.apiKey.substring(0, 20) + '...');
+                console.log('スプレッドシートID:', sheetsConfig.spreadsheetId);
+                console.log('シート名:', sheetsConfig.sheetName);
+                
+                // タイムアウト設定(30秒)
+                const timeout = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('接続がタイムアウトしました(30秒)')), 30000)
+                );
+                
+                // APIクライアントが初期化されていない場合は初期化
+                if (!gapi.client.sheets) {
+                    console.log('Google Sheets APIを初期化中...');
+                    
+                    const initPromise = (async () => {
+                        await gapi.client.init({
+                            apiKey: sheetsConfig.apiKey,
+                        });
+                        console.log('gapi.client.init 完了');
+                        
+                        await gapi.client.load('sheets', 'v4');
+                        console.log('sheets v4 読み込み完了');
+                    })();
+                    
+                    await Promise.race([initPromise, timeout]);
+                }
+                
+                console.log('スプレッドシートにアクセス中...');
+                
+                // テスト読み込み
+                const testPromise = gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: sheetsConfig.spreadsheetId,
+                    range: `${sheetsConfig.sheetName}!A1:A1`
+                });
+                
+                const response = await Promise.race([testPromise, timeout]);
+                
+                console.log('接続成功!', response);
+                updateSyncStatus('synced', '接続成功!');
+                alert('✅ Google Sheetsへの接続に成功しました!');
+                updateConfigStatus(true);
+            } catch (error) {
+                console.error('=== 接続テストエラー ===');
+                console.error('エラー詳細:', error);
+                console.error('エラータイプ:', error.constructor.name);
+                console.error('エラーメッセージ:', error.message);
+                
+                updateSyncStatus('offline', '接続失敗');
+                
+                let errorMessage = error.message || 'Unknown error';
+                
+                // より詳細なエラーメッセージ
+                if (error.message && error.message.includes('タイムアウト')) {
+                    errorMessage = 'ネットワークまたはAPIの応答が遅すぎます。\n\n対処法:\n1. インターネット接続を確認\n2. APIキーの制限設定を確認\n3. しばらく待ってから再試行';
+                } else if (error.result && error.result.error) {
+                    const apiError = error.result.error;
+                    errorMessage = apiError.message;
+                    
+                    if (apiError.code === 403) {
+                        errorMessage += '\n\n対処法:\n1. APIキーが正しいか確認\n2. Google Sheets APIが有効か確認\n3. APIキーの制限を確認';
+                    } else if (apiError.code === 404) {
+                        errorMessage += '\n\n対処法:\n1. スプレッドシートIDが正しいか確認\n2. スプレッドシートが削除されていないか確認';
+                    }
+                } else if (error.status === 0) {
+                    errorMessage = 'ネットワークエラー: APIサーバーに接続できません\n\n対処法:\n1. インターネット接続を確認\n2. ファイアウォールを確認\n3. VPNを使用している場合は無効化してみる';
+                }
+                
+                alert('❌ 接続に失敗しました:\n\n' + errorMessage);
+                updateConfigStatus(false, errorMessage);
+            }
+        }
+
+        // Google Sheetsにデータ保存
+        async function saveToGoogleSheets(data) {
+            if (!sheetsConfig || !gapiLoaded) {
+                throw new Error('Google Sheets未設定');
+            }
+
+            // APIクライアントが初期化されていない場合は初期化
+            if (!gapi.client.sheets) {
+                console.log('Google Sheets APIを初期化します...');
+                await gapi.client.init({
+                    apiKey: sheetsConfig.apiKey,
+                });
+                await gapi.client.load('sheets', 'v4');
+            }
+
+            const values = [[
+                data.date,
+                data.workCost,
+                data.workFee,
+                data.management,
+                data.staffCount,
+                data.shiftType === 'night' ? '夜勤' : '通常',
+                data.expense,
+                data.profit,
+                new Date().toISOString()
+            ]];
+
+            try {
+                const response = await gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: sheetsConfig.spreadsheetId,
+                    range: `${sheetsConfig.sheetName}!A:I`,
+                    valueInputOption: 'RAW',
+                    resource: { values }
+                });
+
+                return response;
+            } catch (error) {
+                console.error('Google Sheets保存エラー:', error);
+                throw error;
+            }
+        }
+
+        // 設定の読み込み
+        function loadSettings() {
+            const saved = localStorage.getItem('fushimino_settings');
+            if (saved) {
+                settings = JSON.parse(saved);
+                document.getElementById('unitPrice').value = settings.unitPrice;
+                document.getElementById('managementFee').value = settings.managementFee;
+                document.getElementById('normalRate').value = settings.normalRate;
+                document.getElementById('nightRate').value = settings.nightRate;
+            }
+        }
+
+        // 設定の保存
+        function saveSettings(event) {
+            event.preventDefault();
+            settings = {
+                unitPrice: parseFloat(document.getElementById('unitPrice').value),
+                managementFee: parseFloat(document.getElementById('managementFee').value),
+                normalRate: parseFloat(document.getElementById('normalRate').value),
+                nightRate: parseFloat(document.getElementById('nightRate').value)
+            };
+            localStorage.setItem('fushimino_settings', JSON.stringify(settings));
+            alert('設定を保存しました');
+            displayData();
+        }
+
+        // データの読み込み
+        function loadData() {
+            const saved = localStorage.getItem('fushimino_daily_data');
+            if (saved) {
+                dailyData = JSON.parse(saved);
+            }
+        }
+
+        // データの保存
+        function saveDataToStorage() {
+            localStorage.setItem('fushimino_daily_data', JSON.stringify(dailyData));
+        }
+
+        // 今日の日付をセット
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+        }
+
+        // 計算プレビューの設定
+        function setupCalculationPreview() {
+            const inputs = ['workCost', 'staffCount', 'shiftType'];
+            inputs.forEach(id => {
+                const element = document.getElementById(id);
+                element.addEventListener('input', updateCalculationPreview);
+                element.addEventListener('change', updateCalculationPreview);
+            });
+        }
+
+        // 計算プレビューの更新
+        function updateCalculationPreview() {
+            const workCost = parseFloat(document.getElementById('workCost').value) || 0;
+            const staffCount = parseInt(document.getElementById('staffCount').value) || 0;
+            const shiftType = document.getElementById('shiftType').value;
+
+            if (workCost > 0 || staffCount > 0) {
+                const calc = calculateValues(null, workCost, staffCount, shiftType);
+                
+                const previewDiv = document.getElementById('calculation-preview');
+                const contentDiv = document.getElementById('preview-content');
+                
+                contentDiv.innerHTML = `
+                    作業費合計: <strong>${calc.workFee.toLocaleString()}円</strong><br>
+                    経費: <strong>${calc.expense.toLocaleString()}円</strong><br>
+                    収支: <strong class="${calc.profit >= 0 ? 'positive' : 'negative'}">${calc.profit.toLocaleString()}円</strong>
+                `;
+                
+                previewDiv.style.display = 'block';
+            } else {
+                document.getElementById('calculation-preview').style.display = 'none';
+            }
+        }
+
+        // 計算処理
+        function calculateValues(date, workCost, staffCount, shiftType) {
+            const workFee = workCost * settings.unitPrice;
+            
+            let daysInMonth = 30;
+            if (date) {
+                const d = new Date(date);
+                daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            }
+            
+            const management = settings.managementFee / daysInMonth;
+            
+            let expense;
+            if (shiftType === 'night') {
+                expense = staffCount * (settings.nightRate * 6 + settings.normalRate * 2);
+            } else {
+                expense = staffCount * settings.normalRate * 8;
+            }
+            
+            const profit = (workFee + management) - expense;
+
+            return {
+                workFee: Math.round(workFee),
+                management: Math.round(management),
+                expense: Math.round(expense),
+                profit: Math.round(profit)
+            };
+        }
+
+        // データ保存
+        async function saveData(event) {
+            event.preventDefault();
+
+            const date = document.getElementById('date').value;
+            const workCost = parseFloat(document.getElementById('workCost').value);
+            const staffCount = parseInt(document.getElementById('staffCount').value);
+            const shiftType = document.getElementById('shiftType').value;
+
+            const calculated = calculateValues(date, workCost, staffCount, shiftType);
+
+            const data = {
+                date: date,
+                workCost: workCost,
+                staffCount: staffCount,
+                shiftType: shiftType,
+                ...calculated,
+                synced: false,
+                syncError: null
+            };
+
+            if (editingIndex >= 0) {
+                dailyData[editingIndex] = data;
+                editingIndex = -1;
+            } else {
+                dailyData.push(data);
+            }
+
+            dailyData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            saveDataToStorage();
+
+            // Google Sheetsに保存を試行
+            if (sheetsConfig && isOnline) {
+                try {
+                    updateSyncStatus('syncing', '同期中...');
+                    await saveToGoogleSheets(data);
+                    data.synced = true;
+                    saveDataToStorage();
+                    updateSyncStatus('synced', '同期完了');
+                    alert('✅ データを保存しました(Google Sheetsに同期済み)');
+                } catch (error) {
+                    console.error('同期エラー:', error);
+                    data.syncError = error.message;
+                    saveDataToStorage();
+                    updateSyncStatus('pending', '同期待ち');
+                    alert('⚠️ データを保存しましたが、Google Sheetsへの同期に失敗しました。後で手動同期してください。');
+                }
+            } else {
+                updateSyncStatus('pending', '同期待ち');
+                alert('💾 データを保存しました(オフライン: 後で自動同期されます)');
+            }
+            
+            document.getElementById('dataForm').reset();
+            setTodayDate();
+            document.getElementById('calculation-preview').style.display = 'none';
+            document.getElementById('submitBtn').textContent = '💾 保存';
+            
+            displayData();
+            updateMonthFilters();
+        }
+
+        // 未同期データの同期
+        async function syncPendingData(showAlert = false) {
+            if (!sheetsConfig || !isOnline) {
+                console.log('同期スキップ: オフラインまたは未設定');
+                if (showAlert) {
+                    alert('オフラインまたはGoogle Sheets未設定です');
+                }
+                return;
+            }
+
+            const pendingData = dailyData.filter(d => !d.synced);
+            
+            if (pendingData.length === 0) {
+                console.log('同期待ちのデータはありません');
+                if (showAlert) {
+                    alert('同期待ちのデータはありません');
+                }
+                if (isOnline && sheetsConfig) {
+                    updateSyncStatus('synced', '同期完了');
+                }
+                return;
+            }
+
+            // APIクライアントが初期化されていない場合は初期化
+            if (!gapi.client.sheets) {
+                console.log('Google Sheets APIを初期化します...');
+                try {
+                    await gapi.client.init({
+                        apiKey: sheetsConfig.apiKey,
+                    });
+                    await gapi.client.load('sheets', 'v4');
+                } catch (error) {
+                    console.error('API初期化エラー:', error);
+                    updateSyncStatus('offline', '初期化失敗');
+                    if (showAlert) {
+                        alert('❌ API初期化に失敗しました: ' + error.message);
+                    }
+                    return;
+                }
+            }
+
+            updateSyncStatus('syncing', `${pendingData.length}件同期中...`);
+            
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const data of pendingData) {
+                try {
+                    await saveToGoogleSheets(data);
+                    data.synced = true;
+                    data.syncError = null;
+                    successCount++;
+                } catch (error) {
+                    console.error('同期エラー:', error);
+                    data.syncError = error.message;
+                    failCount++;
+                }
+            }
+
+            saveDataToStorage();
+            displayData();
+            
+            if (failCount === 0) {
+                updateSyncStatus('synced', '同期完了');
+                if (pendingData.length > 0 && showAlert) {
+                    alert(`✅ ${successCount}件のデータを同期しました`);
+                }
+            } else {
+                updateSyncStatus('pending', `${failCount}件同期失敗`);
+                if (showAlert) {
+                    alert(`⚠️ ${successCount}件成功、${failCount}件失敗しました`);
+                }
+            }
+        }
+
+        // 同期ステータス更新
+        function updateSyncStatus(status, text) {
+            const statusDiv = document.getElementById('syncStatus');
+            const statusText = document.getElementById('syncStatusText');
+            const spinner = statusDiv.querySelector('.spinner');
+            
+            statusDiv.className = `sync-status ${status}`;
+            statusText.textContent = text || status;
+            
+            if (status === 'syncing') {
+                spinner.style.display = 'inline-block';
+            } else {
+                spinner.style.display = 'none';
+            }
+        }
+
+        // オンライン状態の処理
+        function handleOnline() {
+            isOnline = true;
+            updateSyncStatus('synced', 'オンライン');
+            syncPendingData();
+        }
+
+        // オフライン状態の処理
+        function handleOffline() {
+            isOnline = false;
+            updateSyncStatus('offline', 'オフライン');
+        }
+
+        // データ表示
+        function displayData() {
+            const monthFilter = document.getElementById('monthFilter').value;
+            let filteredData = dailyData;
+
+            if (monthFilter) {
+                filteredData = dailyData.filter(d => d.date.startsWith(monthFilter));
+            }
+
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            filteredData.forEach((data, index) => {
+                const row = tbody.insertRow();
+                const actualIndex = dailyData.indexOf(data);
+                
+                const syncBadge = data.synced ? 
+                    '<span style="color: #28a745;">✓</span>' : 
+                    '<span style="color: #ffc107;">待機</span>';
+                
+                row.innerHTML = `
+                    <td>${data.date}</td>
+                    <td>${data.workCost.toLocaleString()}</td>
+                    <td>¥${data.workFee.toLocaleString()}</td>
+                    <td>¥${data.management.toLocaleString()}</td>
+                    <td>${data.staffCount}人</td>
+                    <td>¥${data.expense.toLocaleString()}</td>
+                    <td class="${data.profit >= 0 ? 'positive' : 'negative'}">¥${data.profit.toLocaleString()}</td>
+                    <td>${syncBadge}</td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn-small btn-edit" onclick="editData(${actualIndex})">編集</button>
+                            <button class="btn-small btn-delete" onclick="deleteData(${actualIndex})">削除</button>
+                        </div>
+                    </td>
+                `;
+            });
+
+            // 未同期データカウント
+            const pendingCount = dailyData.filter(d => !d.synced).length;
+            if (pendingCount > 0) {
+                updateSyncStatus('pending', `${pendingCount}件同期待ち`);
+            } else if (isOnline && sheetsConfig) {
+                updateSyncStatus('synced', '同期完了');
+            }
+        }
+
+        // データ編集
+        function editData(index) {
+            const data = dailyData[index];
+            document.getElementById('date').value = data.date;
+            document.getElementById('workCost').value = data.workCost;
+            document.getElementById('staffCount').value = data.staffCount;
+            document.getElementById('shiftType').value = data.shiftType;
+            
+            editingIndex = index;
+            document.getElementById('submitBtn').textContent = '✏️ 更新';
+            
+            switchTab('input');
+            window.scrollTo(0, 0);
+        }
+
+        // 編集キャンセル
+        function cancelEdit() {
+            editingIndex = -1;
+            document.getElementById('dataForm').reset();
+            setTodayDate();
+            document.getElementById('submitBtn').textContent = '💾 保存';
+            document.getElementById('calculation-preview').style.display = 'none';
+        }
+
+        // データ削除
+        function deleteData(index) {
+            if (confirm('このデータを削除しますか?')) {
+                dailyData.splice(index, 1);
+                saveDataToStorage();
+                displayData();
+                updateMonthFilters();
+            }
+        }
+
+        // 全データ削除
+        function clearAllData() {
+            const confirmation = prompt('全データを削除します。実行するには「削除」と入力してください:');
+            if (confirmation === '削除') {
+                dailyData = [];
+                saveDataToStorage();
+                displayData();
+                updateMonthFilters();
+                alert('全データを削除しました');
+            }
+        }
+
+        // 月フィルター更新
+        function updateMonthFilters() {
+            const months = [...new Set(dailyData.map(d => d.date.substring(0, 7)))].sort().reverse();
+            
+            const monthFilter = document.getElementById('monthFilter');
+            const currentMonth = monthFilter.value;
+            
+            monthFilter.innerHTML = '<option value="">全期間</option>';
+            
+            months.forEach(month => {
+                monthFilter.innerHTML += `<option value="${month}">${month}</option>`;
+            });
+            
+            if (currentMonth) monthFilter.value = currentMonth;
+        }
+
+        // 月フィルター適用
+        function filterByMonth() {
+            displayData();
+        }
+
+        // タブ切り替え
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Excelエクスポート
+        function exportToExcel() {
+            if (dailyData.length === 0) {
+                alert('エクスポートするデータがありません');
+                return;
+            }
+
+            const monthFilter = document.getElementById('monthFilter').value;
+            let filteredData = dailyData;
+
+            if (monthFilter) {
+                filteredData = dailyData.filter(d => d.date.startsWith(monthFilter));
+            }
+
+            const exportData = filteredData.map(d => ({
+                '日付': d.date,
+                '作業Unit数': d.workCost,
+                '作業費合計': d.workFee,
+                'マネジメント': d.management,
+                '人数': d.staffCount,
+                '勤務種別': d.shiftType === 'night' ? '夜勤' : '通常',
+                '経費': d.expense,
+                '収支': d.profit,
+                '同期状態': d.synced ? '済' : '未'
+            }));
+
+            const totals = {
+                '日付': '合計',
+                '作業Unit数': '',
+                '作業費合計': filteredData.reduce((sum, d) => sum + d.workFee, 0),
+                'マネジメント': filteredData.reduce((sum, d) => sum + d.management, 0),
+                '人数': '',
+                '勤務種別': '',
+                '経費': filteredData.reduce((sum, d) => sum + d.expense, 0),
+                '収支': filteredData.reduce((sum, d) => sum + d.profit, 0),
+                '同期状態': ''
+            };
+            exportData.push(totals);
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'ふし_み野日報');
+
+            const filename = monthFilter ? 
+                `ふし_み野日報_${monthFilter}.xlsx` : 
+                `ふし_み野日報_全期間.xlsx`;
+
+            XLSX.writeFile(wb, filename);
+        }
+    </script>
+</body>
+</html>
