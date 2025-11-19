@@ -642,6 +642,18 @@
             window.addEventListener('offline', handleOffline);
         });
 
+        // 日本時間のタイムスタンプを取得
+        function getJSTTimestamp() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+
         // 設定ステータス更新
         function updateConfigStatus(valid, message = '') {
             const statusDiv = document.getElementById('configStatus');
@@ -867,11 +879,15 @@
             localStorage.setItem('fushimino_daily_data', JSON.stringify(dailyData));
         }
 
-        // 今日の日付をセット
+        // 今日の日付をセット（日本時間）
         function setTodayDate() {
             const dateInput = document.getElementById('date');
             if (dateInput) {
-                const today = new Date().toISOString().split('T')[0];
+                // 日本時間（JST = UTC+9）で今日の日付を取得
+                const now = new Date();
+                const jstOffset = 9 * 60; // 9時間 = 540分
+                const jstTime = new Date(now.getTime() + (jstOffset - now.getTimezoneOffset()) * 60000);
+                const today = jstTime.toISOString().split('T')[0];
                 dateInput.value = today;
             }
         }
@@ -975,6 +991,7 @@
                 staffCount: staffCount,
                 shiftType: shiftType,
                 ...calculated,
+                timestamp: getJSTTimestamp(), // 日本時間のタイムスタンプを追加
                 synced: false,
                 syncError: null
             };
@@ -1053,6 +1070,10 @@
 
             for (const data of pendingData) {
                 try {
+                    // タイムスタンプがない場合は追加（古いデータ対応）
+                    if (!data.timestamp) {
+                        data.timestamp = getJSTTimestamp();
+                    }
                     await saveToGoogleSheets(data);
                     data.synced = true;
                     data.syncError = null;
